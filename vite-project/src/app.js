@@ -24,7 +24,7 @@ let model;
 // Carica il modello GLB
 const loader = new GLTFLoader();
 loader.load(
-    'src/models/cube.glb', // Percorso al file GLB
+    'src/Model/cube.glb', // Percorso al file GLB
     (gltf) => {
         model = gltf.scene;
         model.scale.set(1, 1, 1); // Regola le dimensioni del cubo
