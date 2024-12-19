@@ -10,8 +10,11 @@ export default class Camera {
             1000
         );
 
-        this.instance.position.set(3, 10, 15); // Posizione iniziale della telecamera
-        this.instance.lookAt(0, 0, 0); // Punto iniziale guardato
+        // Posizione iniziale della telecamera
+        this.instance.position.set(3, 10, 15); 
+
+        // Memorizza l'altezza fissa della telecamera
+        this.fixedHeight = 10; 
 
         this.model = model; // Riferimento al modello da seguire
         this.sizes = sizes;
@@ -31,11 +34,15 @@ export default class Camera {
 
     update() {
         if (this.model) {
-            // Segui il modello
+            // La telecamera segue il modello in posizione orizzontale
             this.instance.position.x = this.model.position.x + 5; // Offset laterale
-            this.instance.position.y = this.model.position.y + 6; // Offset in alto
             this.instance.position.z = this.model.position.z + 12; // Offset dietro
-            this.instance.lookAt(this.model.position); // La telecamera guarda il modello
+
+            // Mantieni la posizione verticale fissa
+            this.instance.position.y = this.fixedHeight;
+
+            // La telecamera guarda sempre il modello
+            this.instance.lookAt(this.model.position.x, 0, this.model.position.z);
         }
     }
 }
