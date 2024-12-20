@@ -56,6 +56,18 @@ loader.load('/vite-project/src/Model/floor.glb', (gltf) => {
     floor = gltf.scene;
     floor.scale.set(1, 1, 1);
     floor.position.set(0, floorHeight - 1, 0);
+
+    // Cambia colore e aggiungi riflessi al materiale
+    floor.traverse((child) => {
+        if (child.isMesh) {
+            child.material = new THREE.MeshStandardMaterial({
+                color:0x9C31F9, // Grigio scuro con un tono bluastro
+                metalness: 0.5, // Effetto riflettente
+                roughness: 0.3, // Superficie leggermente lucida
+            });
+        }
+    });
+
     scene.add(floor);
 });
 
