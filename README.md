@@ -1,3 +1,6 @@
 # Progetto-GPO
 
-da terminale:npm run dev per satartare il server
+da terminale scrivere:
+npm install -D vite
+
+npm run dev
