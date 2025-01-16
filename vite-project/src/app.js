@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import Camera from './Camera/camera.js';
+import Collision from './Collision/Collision.js';
 
 // Crea scena e renderer
 const scene = new THREE.Scene();
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio); // Migliora la qualità su schermi ad alta risoluzione
+renderer.setPixelRatio(window.devicePixelRatio);
 document.body.appendChild(renderer.domElement);
 
 // Imposta lo stile del canvas per full screen
@@ -24,6 +25,9 @@ scene.add(light);
 const ambientLight = new THREE.AmbientLight(0x404040, 1);
 scene.add(ambientLight);
 
+// Creazione oggetto collisione
+const collisionManager = new Collision();
+
 // Variabili
 let model, floor, player;
 const gravity = -0.01;
@@ -34,6 +38,7 @@ let isFalling = true;
 let isPlayerActive = false;
 const moveSpeed = 0.1;
 const keyState = {};
+const loader = new GLTFLoader(); // Dichiarazione del loader
 
 // Configurazione delle dimensioni
 const sizes = {
@@ -51,32 +56,32 @@ window.addEventListener('keydown', (event) => (keyState[event.key] = true));
 window.addEventListener('keyup', (event) => (keyState[event.key] = false));
 
 // Carica il pavimento
-const loader = new GLTFLoader();
 loader.load('/vite-project/src/Model/floor.glb', (gltf) => {
     floor = gltf.scene;
     floor.scale.set(1, 1, 1);
-    floor.position.set(0, floorHeight - 1, 0);
+    floor.position.set(0, floorHeight, 0);
 
-    // Cambia colore e aggiungi riflessi al materiale
     floor.traverse((child) => {
         if (child.isMesh) {
             child.material = new THREE.MeshStandardMaterial({
-                color:0x9C31F9, // Grigio scuro con un tono bluastro
-                metalness: 0.5, // Effetto riflettente
-                roughness: 0.3, // Superficie leggermente lucida
+                color: 0x9C31F9,
+                metalness: 0.5,
+                roughness: 0.3,
             });
         }
     });
 
     scene.add(floor);
+    collisionManager.addObject('floor', floor); // Registra il pavimento nel collision manager
 });
 
 // Carica il cubo
 loader.load('/vite-project/src/Model/title.glb', (gltf) => {
     model = gltf.scene;
     model.scale.set(1, 1, 1);
-    model.position.set(0, 5, 0);
+    model.position.set(-2, 5, 0);
     scene.add(model);
+    model.rotation.y = 709;
 
     // Inizializza la telecamera
     cameraInstance = new Camera({ sizes, scene, model });
@@ -89,27 +94,8 @@ loader.load('/vite-project/src/Model/player.glb', (gltf) => {
     player.position.set(0, 15, 0);
     scene.add(player);
     player.visible = false;
+    collisionManager.addObject('player', player); // Registra il giocatore nel collision manager
 });
-
-// Aggiorna la posizione del titolo
-function updateBlockPosition() {
-    if (model && !isPlayerActive) {
-        if (isFalling) {
-            velocityY += gravity;
-            model.position.y += velocityY;
-
-            if (model.position.y <= floorHeight) {
-                model.position.y = floorHeight;
-                velocityY = -velocityY * bounceFactor;
-
-                if (Math.abs(velocityY) < 0.01) {
-                    velocityY = 0;
-                    isFalling = false;
-                }
-            }
-        }
-    }
-}
 
 // Aggiorna la posizione del giocatore
 function updatePlayerPosition() {
@@ -134,46 +120,18 @@ function updatePlayerPosition() {
     }
 }
 
-// Attiva il personaggio
-function activatePlayer() {
-    if (!isPlayerActive && !isFalling) {
-        isPlayerActive = true;
-        model.visible = false;
-        player.visible = true;
-        player.position.set(0, 15, 0);
-        velocityY = 0;
-        cameraInstance.model = player;
-        isFalling = true;
-    }
-}
-
-// Aggiorna le dimensioni del renderer e della telecamera quando la finestra viene ridimensionata
-window.addEventListener('resize', () => {
-    sizes.viewport.width = window.innerWidth;
-    sizes.viewport.height = window.innerHeight;
-
-    renderer.setSize(sizes.viewport.width, sizes.viewport.height);
-    renderer.setPixelRatio(window.devicePixelRatio);
-
-    if (cameraInstance) {
-        cameraInstance.updateAspectRatio();
-    }
-});
-
 // Animazione
 function animate() {
     if (cameraInstance) cameraInstance.update();
-    if (!isPlayerActive) updateBlockPosition();
-    if (isPlayerActive) updatePlayerPosition();
+
+    collisionManager.updateBoundingBoxes(); // Aggiorna i bounding box degli oggetti
+
+    if (collisionManager.checkCollision('player', 'floor')) {
+        console.log('Il giocatore ha toccato il pavimento!');
+    }
+
     renderer.render(scene, cameraInstance ? cameraInstance.instance : new THREE.PerspectiveCamera());
     requestAnimationFrame(animate);
 }
-
-// Attiva il personaggio con la barra spaziatrice
-window.addEventListener('keydown', (event) => {
-    if (event.key === ' ' || event.key === 'Space') {
-        activatePlayer();
-    }
-});
 
 animate();
