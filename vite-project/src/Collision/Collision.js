@@ -6,7 +6,6 @@ export default class Collision {
     }
 
     /**
-     * Aggiunge un oggetto alla gestione delle collisioni.
      * @param {string} name - Nome identificativo dell'oggetto.
      * @param {THREE.Object3D} object - Oggetto Three.js.
      */
@@ -17,7 +16,6 @@ export default class Collision {
     }
 
     /**
-     * Verifica se due oggetti stanno collidendo.
      * @param {string} nameA - Nome del primo oggetto.
      * @param {string} nameB - Nome del secondo oggetto.
      * @returns {boolean} True se c'è una collisione, altrimenti False.
@@ -32,7 +30,6 @@ export default class Collision {
     }
 
     /**
-     * Aggiorna il bounding box di un oggetto.
      * @param {string} name - Nome dell'oggetto.
      */
     updateBoundingBox(name, object) {

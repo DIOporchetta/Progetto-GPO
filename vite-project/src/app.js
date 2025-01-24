@@ -14,8 +14,6 @@ document.body.appendChild(renderer.domElement);
 renderer.domElement.style.position = 'absolute';
 renderer.domElement.style.top = '0';
 renderer.domElement.style.left = '0';
-renderer.domElement.style.width = '100%';
-renderer.domElement.style.height = '100%';
 
 // Luci
 const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -31,14 +29,14 @@ const collisionManager = new Collision(scene);
 // Variabili
 let model, floor, player;
 const gravity = -0.01;
-const bounceFactor = 0.7;
+const bounceFactor = 0.3;
 let velocityY = 0;
 const floorHeight = -1.5;
 let isFalling = true;
 let isPlayerActive = false;
 const moveSpeed = 0.1;
 const keyState = {};
-const loader = new GLTFLoader(); // Dichiarazione del loader
+const loader = new GLTFLoader();
 
 // Configurazione delle dimensioni
 const sizes = {
@@ -48,18 +46,19 @@ const sizes = {
     },
 };
 
-// Telecamera
-let cameraInstance;
+// Creazione telecamera
+const cameraInstance = new Camera({
+    sizes,
+    scene,
+    model: null,
+});
 
 // Eventi tastiera
 window.addEventListener('keydown', (event) => (keyState[event.key] = true));
 window.addEventListener('keyup', (event) => (keyState[event.key] = false));
 
-let playerBoundingBoxHelper, floorBoundingBoxHelper, titleBoundingBoxHelper;
-
-// Variabili per il titolo che cade
-let titleVelocityY = 0; // Velocità verticale del titolo
-let isTitleFalling = true; // Flag per determinare se il titolo sta cadendo
+// Variabili telecamera
+let cameraTarget = null;
 
 // Carica il giocatore
 loader.load('/vite-project/src/Model/player.glb', (gltf) => {
@@ -69,79 +68,37 @@ loader.load('/vite-project/src/Model/player.glb', (gltf) => {
     scene.add(player);
     player.visible = false;
 
-    // Crea BoxHelper per il giocatore e aggiungilo alla scena
-    playerBoundingBoxHelper = new THREE.BoxHelper(player, 0xff0000);  // Colore rosso
-    scene.add(playerBoundingBoxHelper);
-
-    // Registra il giocatore nel collision manager
     collisionManager.addObject('player', player);
+
+    // Associa il modello alla telecamera
+    cameraInstance.model = player;
 });
 
 // Carica il pavimento
 loader.load('/vite-project/src/Model/floor.glb', (gltf) => {
     floor = gltf.scene;
     floor.scale.set(1, 1, 1);
-    floor.position.set(0, floorHeight-1, 0);
+    floor.position.set(0, floorHeight - 1, 0);
     scene.add(floor);
 
-    // Crea BoxHelper per il pavimento e aggiungilo alla scena
-    floorBoundingBoxHelper = new THREE.BoxHelper(floor, 0x00ff00);  // Colore verde
-    scene.add(floorBoundingBoxHelper);
-
-    // Registra il pavimento nel collision manager
     collisionManager.addObject('floor', floor);
 });
-
-// Carica il modello title
-loader.load('/vite-project/src/Model/title.glb', (gltf) => {
-    model = gltf.scene;
-    model.scale.set(1, 1, 1);
-    model.position.set(-2, 5, 0);
-    scene.add(model);
-    model.rotation.y = 709;
-
-    // Crea BoxHelper per il modello title e aggiungilo alla scena
-    titleBoundingBoxHelper = new THREE.BoxHelper(model, 0x0000ff);  // Colore blu
-    scene.add(titleBoundingBoxHelper);
-
-    // Registra il modello title nel collision manager
-    collisionManager.addObject('title', model);
-
-    // Inizializza la telecamera
-    cameraInstance = new Camera({ sizes, scene, model });
-});
-
-// Funzione per la caduta e rimbalzo del titolo
-function updateTitlePosition() {
-    if (model) {
-        // Aggiorna la velocità per la caduta
-        titleVelocityY += gravity;
-
-        // Muovi il titolo
-        model.position.y += titleVelocityY;
-
-        // Se il titolo tocca il pavimento, inverte la velocità per farlo rimbalzare
-        if (model.position.y <= floorHeight) {
-            model.position.y = floorHeight;
-            titleVelocityY = -titleVelocityY * bounceFactor;
-
-            // Se la velocità verticale è molto bassa, fermiamo la caduta
-            if (Math.abs(titleVelocityY) < 0.01) {
-                titleVelocityY = 0;
-                isTitleFalling = false;
-            }
-        }
-    }
-}
 
 // Aggiorna la posizione del giocatore
 function updatePlayerPosition() {
     if (player && isPlayerActive) {
+        const prevPosition = player.position.clone();
+
+        // Movimento del giocatore
         if (keyState['w'] || keyState['ArrowUp']) player.position.z -= moveSpeed;
         if (keyState['s'] || keyState['ArrowDown']) player.position.z += moveSpeed;
         if (keyState['a'] || keyState['ArrowLeft']) player.position.x -= moveSpeed;
         if (keyState['d'] || keyState['ArrowRight']) player.position.x += moveSpeed;
 
+        // Controllo collisioni
+        collisionManager.updateBoundingBox('player', player);
+
+        // Gravità
         velocityY += gravity;
         player.position.y += velocityY;
 
@@ -154,48 +111,53 @@ function updatePlayerPosition() {
                 isFalling = false;
             }
         }
-
-        // Aggiorna il bounding box del giocatore
-        collisionManager.objects['player'].setFromObject(player);
     }
 }
 
-// Funzione per far apparire il personaggio
+// Mostra il giocatore e collega la telecamera
 function spawnPlayer() {
-    if (!isPlayerActive && !isTitleFalling) {
+    if (!isPlayerActive) {
         player.visible = true;
         isPlayerActive = true;
+        cameraTarget = player;
     }
 }
 
 // Animazione
 function animate() {
-    if (cameraInstance) cameraInstance.update();
+    // Gestione del rimbalzo del titolo
+    if (isFalling) {
+        velocityY += gravity;
+        if (model) {
+            model.position.y += velocityY;
+            if (model.position.y <= floorHeight) {
+                model.position.y = floorHeight;
+                velocityY = -velocityY * bounceFactor;
 
-    // Aggiorna la posizione del titolo
-    updateTitlePosition();
+                if (Math.abs(velocityY) < 0.01) {
+                    velocityY = 0;
+                    isFalling = false;
+                    console.log('Rimbalzo del titolo terminato.');
+                    spawnPlayer();
+                }
+            }
+        }
+    }
 
-    // Aggiorna la posizione del giocatore
-    updatePlayerPosition();
+    if (isPlayerActive) updatePlayerPosition();
 
-    // Aggiorna la posizione della bounding box
-    if (playerBoundingBoxHelper) playerBoundingBoxHelper.update();
-    if (floorBoundingBoxHelper) floorBoundingBoxHelper.update();
-    if (titleBoundingBoxHelper) titleBoundingBoxHelper.update();
+    // Aggiorna la posizione della telecamera
+    if (cameraTarget) {
+        cameraInstance.update();
+    }
 
-    // Rendi visibili le bounding box
-    collisionManager.updateBoundingBox('player', player);
-    collisionManager.updateBoundingBox('floor', floor);
-
-    renderer.render(scene, cameraInstance ? cameraInstance.instance : new THREE.PerspectiveCamera());
+    renderer.render(scene, cameraInstance.instance);
     requestAnimationFrame(animate);
 }
 
+// Avvio animazione
 animate();
 
-// Gestisci la pressione della barra spaziatrice per far apparire il giocatore
 window.addEventListener('keydown', (event) => {
-    if (event.key === ' ') {
-        spawnPlayer();
-    }
+    if (event.key === ' ') spawnPlayer();
 });
