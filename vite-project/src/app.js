@@ -54,9 +54,9 @@ const moveSpeed = 0.1;
 const keyState = {};
 
 // Carica modelli
-loader.load('/vite-project/src/Model/player.glb', (gltf) => {
+loader.load('/vite-project/src/Model/car.glb', (gltf) => {
     player = gltf.scene;
-    player.scale.set(1, 1, 2);
+    player.scale.set(1, 1, 1);
     player.position.set(0, 15, 0);
     player.visible = false;
     scene.add(player);
@@ -66,7 +66,7 @@ loader.load('/vite-project/src/Model/player.glb', (gltf) => {
 
 loader.load('/vite-project/src/Model/floor.glb', (gltf) => {
     floor = gltf.scene;
-    floor.position.set(0, floorHeight - 1, 0);
+    floor.position.set(0, floorHeight, 0);
     scene.add(floor);
     collisionManager.addObject('floor', floor);
 });
