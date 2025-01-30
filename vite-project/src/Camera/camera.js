@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 export default class Camera {
-    constructor({ sizes, scene, model }) {
+    constructor({ sizes, scene, model}) {
         // Crea la telecamera
         this.instance = new THREE.PerspectiveCamera(
             75,
@@ -24,6 +24,8 @@ export default class Camera {
 
         // Listener per aggiornare le dimensioni
         window.addEventListener('resize', () => this.updateAspectRatio());
+
+        
     }
 
     updateAspectRatio() {
