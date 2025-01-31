@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import Camera from './Camera/camera.js';
-import Collision from './Collision/Collision.js';
+//import Collision from './Collision/Collision.js';
 import AudioManager from './AudioManager/audioManager.js';
 
 // Crea scena e renderer
@@ -17,10 +17,14 @@ renderer.domElement.style.top = '0';
 renderer.domElement.style.left = '0';
 
 // Luci
-const light = new THREE.DirectionalLight(0xffffff, 1);
+const light = new THREE.DirectionalLight(0xffffff, 3);
 light.position.set(1, 1, 1).normalize();
 scene.add(light);
-scene.add(new THREE.AmbientLight(0x404040, 1));
+scene.add(new THREE.AmbientLight(0x404040, 2));
+const light1 = new THREE.DirectionalLight(0xffffff, 1); // Aumenta l'intensità
+light.position.set(1, 1, 1).normalize();
+scene.add(light1);
+
 
 // Configurazione telecamera
 const cameraInstance = new Camera({
@@ -36,7 +40,7 @@ const cameraInstance = new Camera({
 });
 
 // Inizializza sistemi
-const collisionManager = new Collision(scene);
+//const collisionManager = new Collision(scene);
 const audioManager = new AudioManager(cameraInstance.instance);
 const loader = new GLTFLoader();
 
@@ -60,7 +64,7 @@ loader.load('/vite-project/src/Model/car.glb', (gltf) => {
     player.position.set(0, 15, 0);
     player.visible = false;
     scene.add(player);
-    collisionManager.addObject('player', player);
+  //  collisionManager.addObject('player', player);
     cameraInstance.model = player;
 });
 
@@ -68,7 +72,7 @@ loader.load('/vite-project/src/Model/floor.glb', (gltf) => {
     floor = gltf.scene;
     floor.position.set(0, floorHeight, 0);
     scene.add(floor);
-    collisionManager.addObject('floor', floor);
+   //isionManager.addObject('floor', floor);
 });
 
 // Carica audio
@@ -129,7 +133,7 @@ function updatePlayerPosition() {
         velocityY = -velocityY * bounceFactor;
         if (Math.abs(velocityY) < 0.01) velocityY = 0;
     }
-    collisionManager.updateBoundingBox('player', player);
+   // collisionManager.updateBoundingBox('player', player);
 }
 
 // Animazione
