@@ -81,7 +81,7 @@ let cameraTarget = null;
 
 
 // Carica il giocatore
-loader.load('/vite-project/src/Model/player.glb', (gltf) => {
+loader.load('/vite-project/src/Model/car.glb', (gltf) => {
     //loader.load('/vite-project/src/Model/car.glb', (gltf) => {
     player = gltf.scene;
     player.scale.set(1, 1, 1);
