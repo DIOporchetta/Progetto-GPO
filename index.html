@@ -6,6 +6,19 @@
   <title>Progetto Vite</title>
 </head>
 <body>
-  <script type="module" src="/vite-project/src/app.js"></script>
+
+  <h1>Benvenuto nel Progetto</h1>
+  <button id="loadScript">Avvia il Progetto</button>
+
+  <script>
+    document.getElementById("loadScript").addEventListener("click", function() {
+      const script = document.createElement("script");
+      script.type = "module";
+      script.src = "/vite-project/src/app.js";
+      document.body.appendChild(script);
+      this.remove(); // Rimuove il bottone dopo il click (opzionale)
+    });
+  </script>
+
 </body>
 </html>
