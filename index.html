@@ -1,14 +1,26 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Progetto Vite</title>
+  <title>Digital Portfolio - Innovazione e Tecnologia</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="vite-project/src/STYLE/style.css">
 </head>
-<body>
+<body class="bg-gradient">
 
-  <h1>Benvenuto nel Progetto</h1>
-  <button id="loadScript">Avvia il Progetto</button>
+  <!-- Hero Section -->
+  <header class="hero">
+    <h1 class="title animate-fade-in">
+      Benvenuto nel <span>Digital Portfolio</span>
+    </h1>
+    <p class="subtitle animate-fade-in delay-200">
+      Scopri l'innovazione del Portfolio di nuova generazione, intuitivo e dinamico.
+    </p>
+    <button id="loadScript" class="btn-primary animate-fade-in delay-400">
+      Entra nella Mappa
+    </button>
+  </header>
 
   <script>
     document.getElementById("loadScript").addEventListener("click", function() {
@@ -16,7 +28,7 @@
       script.type = "module";
       script.src = "/vite-project/src/app.js";
       document.body.appendChild(script);
-      this.remove(); // Rimuove il bottone dopo il click (opzionale)
+      this.remove(); // Rimuove il bottone dopo il click
     });
   </script>
 
