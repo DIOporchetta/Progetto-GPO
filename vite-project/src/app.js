@@ -128,7 +128,7 @@ function updatePlayerPosition() {
     // Gravità
     velocityY += gravity;
     player.position.y += velocityY;
-    if (player.position.y <= floorHeight) {
+    if (player.position.y < floorHeight) {
         player.position.y = floorHeight;
         velocityY = -velocityY * bounceFactor;
         if (Math.abs(velocityY) < 0.01) velocityY = 0;
@@ -140,7 +140,7 @@ function updatePlayerPosition() {
 function animate() {
     if (isFalling) {
         velocityY += gravity;
-        if (player && player.position.y <= floorHeight) {
+        if (player && player.position.y < floorHeight) {
             isFalling = false;
             spawnPlayer();
         }
