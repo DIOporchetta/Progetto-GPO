@@ -33,13 +33,19 @@
   </header>
 
   <script>
-    document.getElementById("loadScript").addEventListener("click", function() {
-      const script = document.createElement("script");
-      script.type = "module";
-      script.src = "/vite-project/src/app.js";
-      document.body.appendChild(script);
-      this.remove(); // Rimuove il bottone dopo il click
-    });
+document.getElementById("loadScript").addEventListener("click", function() {
+  const script = document.createElement("script");
+  script.type = "module";
+  script.src = "/vite-project/src/app.js";
+  document.body.appendChild(script);
+  this.remove(); // Rimuove il bottone dopo il click
+
+  // Nasconde la navbar con un'animazione
+  const navbar = document.querySelector("nav");
+  navbar.style.transition = "transform 0.5s ease-in-out, opacity 0.5s";
+  navbar.style.transform = "translateY(-100%)"; // Sposta la navbar verso l'alto
+  navbar.style.opacity = "0"; // La rende trasparente
+});
   </script>
 
 </body>
