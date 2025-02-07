@@ -1,0 +1,26 @@
+/* Stile di base per la pagina Project */
+body {
+    background: radial-gradient(circle at top, #000000, #272c38);
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    animation: bg-move 10s infinite alternate ease-in-out;
+    color: white;
+    font-family: Arial, sans-serif;
+}
+
+h1 {
+    font-size: 3rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    background: linear-gradient(90deg, 
+        #ff0000, #ff7300, #ffeb00, 
+        #47ff00, #00ffee, #2b65ff, 
+        #8000ff, #ff0080, #ff0000);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
