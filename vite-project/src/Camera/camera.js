@@ -19,8 +19,8 @@ export default class Camera {
         );
 
         // Inizializza lo stato
-        this.cameraDistance = 10;
-        this.targetCameraDistance = 10;
+        this.cameraDistance = 20;
+        this.targetCameraDistance = 20;
 
         // Configurazioni
         this.ZOOM_SPEED = 1.5;
@@ -55,16 +55,21 @@ export default class Camera {
     // Aggiorna la posizione della telecamera
     update() {
         if (!this.model) return;
-
+    
         // Aggiorna lo zoom in modo fluido
         this.cameraDistance = THREE.MathUtils.lerp(
             this.cameraDistance,
             this.targetCameraDistance,
             this.ZOOM_SMOOTH_FACTOR
         );
-
-        // Calcola la posizione della telecamera
-        const offset = new THREE.Vector3(0, 0, this.cameraDistance);
+    
+        // Calcola la posizione della telecamera con un offset verticale
+        const offset = new THREE.Vector3(
+            0, 
+            this.cameraDistance * 0.5, // Aggiunge un'altezza proporzionale alla distanza
+            this.cameraDistance
+        );
+        
         this.instance.position.copy(this.model.position).add(offset);
         this.instance.lookAt(this.model.position);
         this.instance.up.set(0, 1, 0);

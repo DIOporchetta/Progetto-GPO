@@ -59,38 +59,15 @@ const wheelRadius = 0.4;
 // Carica la carrozzeria della macchina
 loader.load('/vite-project/src/Model/car.glb', (gltf) => {
     player = gltf.scene;
-    player.scale.set(2, 2, 2);
+    player.scale.set(1.5, 1.5, 1.5);
     player.position.set(0, 15, 0);
     player.visible = false;
-    scene.add(player);
     cameraInstance.model = player;
-});
-/*
-// Carica le ruote della macchina
-loader.load('/vite-project/src/Model/carbody.glb', (gltf) => {
-    player = gltf.scene;
-    player.scale.set(2, 2, 2);
-    player.position.set(0, 15, 0);
-    player.visible = false;
     scene.add(player);
-    cameraInstance.model = player;
+    
+
 });
 
-loader.load('/vite-project/src/Model/wheels.glb', (gltf) => {
-    const wheels = gltf.scene;
-
-    // Trova le due ruote nel modello
-    frontWheel = wheels.getObjectByName('frontWheel'); // Assicurati che il nome sia corretto
-    rearWheel = wheels.getObjectByName('rearWheel');
-
-    if (frontWheel && rearWheel) {
-        frontWheel.position.set(0.8, 15, 1.2); // Regola posizione rispetto alla carrozzeria
-        rearWheel.position.set(0.8, 15, -1.2);
-
-        scene.add(frontWheel);
-        scene.add(rearWheel);
-    }
-});*/
 
 // Carica il pavimento
 loader.load('/vite-project/src/Model/map.glb', (gltf) => {
@@ -164,22 +141,21 @@ function updatePlayerPosition() {
     }
 
     // Gravità
-
-    // Gravità
     velocityY += gravity;
     player.position.y += velocityY;
-    if (player.position.y <= floorHeight) {
+    if (player.position.y <= floorHeight+5) {
         player.position.y = floorHeight;
         velocityY = -velocityY * bounceFactor;
         if (Math.abs(velocityY) < 0.01) velocityY = 0;
     }
+
 }
 
 // Animazione
 function animate() {
     if (isFalling) {
         velocityY += gravity;
-        if (player && player.position.y <= floorHeight) {
+        if (player && player.position.y <= floorHeight+5) {
             isFalling = false;
             spawnPlayer();
         }
