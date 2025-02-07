@@ -10,6 +10,12 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 document.body.appendChild(renderer.domElement);
 
+
+let currentSpeed = 0;  
+const rotationSpeed = 0.08; 
+const speedLerpFactor = 0.1; 
+let targetSpeed = 0; 
+
 // Imposta stile canvas
 renderer.domElement.style.position = 'absolute';
 renderer.domElement.style.top = '0';
@@ -47,7 +53,7 @@ let player, frontWheel, rearWheel, floor;
 const gravity = -0.01;
 const bounceFactor = 0.3;
 const floorHeight = -1.5;
-let velocityY = 0;
+let velocityY = 0.2;
 let isFalling = true;
 let isPlayerActive = false;
 const moveSpeed = 1;
@@ -76,11 +82,9 @@ loader.load('/vite-project/src/Model/map.glb', (gltf) => {
     scene.add(floor);
 });
 
-// Carica audio
 audioManager.loadSound('clacson', '/vite-project/src/Sound/clacson.ogg');
 audioManager.loadSound('down', '/vite-project/src/Sound/down.ogg');
 
-// Gestione input
 window.addEventListener('keydown', (event) => {
     keyState[event.key] = true;
     if (event.key === ' ') spawnPlayer();
@@ -100,17 +104,19 @@ function spawnPlayer() {
     }
 }
 
-// Aggiorna la posizione del giocatore e la rotazione delle ruote
+
 function updatePlayerPosition() {
     if (!player || !isPlayerActive) return;
-
+ 
     const moveDirection = new THREE.Vector3();
     const cameraForward = new THREE.Vector3();
     const cameraRight = new THREE.Vector3();
 
+    // Ottieni la direzione della telecamera
     cameraInstance.instance.getWorldDirection(cameraForward);
     cameraRight.crossVectors(cameraInstance.instance.up, cameraForward).normalize();
 
+    // Movimento in base ai tasti premuti
     if (keyState['w'] || keyState['ArrowUp']) moveDirection.add(cameraForward);
     if (keyState['s'] || keyState['ArrowDown']) moveDirection.sub(cameraForward);
     if (keyState['a'] || keyState['ArrowLeft']) moveDirection.add(cameraRight);
@@ -119,25 +125,21 @@ function updatePlayerPosition() {
     if (moveDirection.length() > 0) {
         moveDirection.normalize();
 
-        // Calcola la distanza percorsa
-        let previousPosition = player.position.clone();
-        player.position.add(moveDirection.multiplyScalar(moveSpeed));
+        // Interpolazione della velocità
+        targetSpeed = moveSpeed;  // Velocità target in base alla direzione
+        currentSpeed = THREE.MathUtils.lerp(currentSpeed, targetSpeed, speedLerpFactor);  // Interpolazione della velocità
 
-        const distanceMoved = previousPosition.distanceTo(player.position);
+        // Aggiorna la posizione del giocatore
+        player.position.add(moveDirection.multiplyScalar(currentSpeed));
 
-        // Ruota le ruote in base alla distanza percorsa
-        if (frontWheel && rearWheel) {
-            const rotationAmount = distanceMoved / wheelRadius;
-            frontWheel.rotation.x -= rotationAmount;
-            rearWheel.rotation.x -= rotationAmount;
-        }
-
-        // Ruotare la carrozzeria verso la direzione di movimento
+        // Calcola la rotazione desiderata in base alla direzione del movimento
         const targetRotation = Math.atan2(moveDirection.x, moveDirection.z);
         let deltaRotation = targetRotation - player.rotation.y;
         deltaRotation = ((deltaRotation % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
         if (deltaRotation > Math.PI) deltaRotation -= Math.PI * 2;
-        player.rotation.y += deltaRotation * 0.15;
+
+        // Interpolazione della rotazione per un cambiamento più fluido
+        player.rotation.y += deltaRotation * rotationSpeed;
     }
 
     // Gravità

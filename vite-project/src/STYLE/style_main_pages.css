@@ -1,5 +1,5 @@
 .bg-gradient {
-    background: radial-gradient(circle at top, #1e3a8a, #111827);
+    background: radial-gradient(circle at top, #000000, #272c38);
     height: 100vh;
     display: flex;
     align-items: center;
@@ -17,6 +17,7 @@
 .title {
     font-size: 4.5rem; /* 🔥 Titolo grande */
     font-weight: 900;
+    font-family:Kanit;
     text-transform: uppercase;
     background: linear-gradient(90deg, 
         #ff0000, #ff7300, #ffeb00, 
@@ -25,6 +26,7 @@
     background-size: 300% 300%;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+
     
 }
 
@@ -44,7 +46,7 @@
 .btn-primary {
     margin-top: 1.5rem;
     padding: 0.75rem 1.5rem;
-    background: linear-gradient(145deg, #2563eb, #1e40af);
+    background: linear-gradient(145deg, #25eb46, #07791a);
     color: white;
     font-weight: 600;
     font-size: 1.2rem;
