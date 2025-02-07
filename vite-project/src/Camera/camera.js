@@ -2,38 +2,31 @@ import * as THREE from 'three';
 
 export default class Camera {
     constructor({ sizes, scene, model, rendererDom }) {
+        // Verifica obbligatoria del rendererDom
         if (!rendererDom) {
             throw new Error("rendererDom è obbligatorio per la creazione della Camera");
         }
-
         this.model = model;
         this.sizes = sizes;
-        this.rendererDom = rendererDom;
+        this.rendererDom = rendererDom;  // Ora garantito che esista
 
         // Inizializza la telecamera
         this.instance = new THREE.PerspectiveCamera(
             75,
             sizes.viewport.width / sizes.viewport.height,
             0.1,
-            1000
+            2000
         );
 
         // Inizializza lo stato
-        this.cameraDistance = 20;  // Posizione più alta per la visione dall'alto
-        this.targetCameraDistance = 20;
-        this.cameraAngleX = 0;
-        this.cameraAngleY = -Math.PI / 1.5;  // Inclinata di più verso il basso
-        this.isLockedMode = false;
-        this.isPointerLocked = false;
-        this.isDragging = false;
+        this.cameraDistance = 10;
+        this.targetCameraDistance = 10;
 
         // Configurazioni
-        this.MOUSE_SENSITIVITY = 0.005;
         this.ZOOM_SPEED = 1.5;
-        this.MIN_ZOOM = 3;
-        this.MAX_ZOOM = 40;  // Più ampio per una visione dall'alto
+        this.MIN_ZOOM = 1;
+        this.MAX_ZOOM = 30;
         this.ZOOM_SMOOTH_FACTOR = 0.1;
-        this.MAX_VERTICAL_ANGLE = Math.PI / 4;
 
         // Setup eventi
         this.setupEventListeners();
@@ -41,40 +34,29 @@ export default class Camera {
     }
 
     setupEventListeners() {
-        this.rendererDom.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-        this.rendererDom.addEventListener('mousedown', (e) => this.handleMouseDown(e));
-        this.rendererDom.addEventListener('mouseup', () => this.handleMouseUp());
+        // Ascolta l'evento di zoom tramite scroll del mouse
         this.rendererDom.addEventListener('wheel', (e) => this.handleMouseWheel(e));
-        
-        window.addEventListener('keydown', (e) => this.handleKeyDown(e));
-        document.addEventListener('pointerlockchange', () => this.handlePointerLockChange());
+
+        // Ascolta l'evento di ridimensionamento della finestra
         window.addEventListener('resize', () => this.updateAspectRatio());
     }
 
-
-
-    handleKeyDown(event) {
-        if (event.key === 'Shift') {
-            event.preventDefault();
-            if (!this.isLockedMode) {
-                this.rendererDom.requestPointerLock();
-                this.isLockedMode = true;
-            } else {
-                document.exitPointerLock();
-                this.isLockedMode = false;
-            }
-        }
+    // Gestione dello zoom tramite la rotella del mouse
+    handleMouseWheel(event) {
+        event.preventDefault();
+        this.targetCameraDistance += Math.sign(event.deltaY) * this.ZOOM_SPEED;
+        this.targetCameraDistance = THREE.MathUtils.clamp(
+            this.targetCameraDistance,
+            this.MIN_ZOOM,
+            this.MAX_ZOOM
+        );
     }
 
-    handlePointerLockChange() {
-        this.isPointerLocked = document.pointerLockElement === this.rendererDom;
-        document.body.style.cursor = this.isPointerLocked ? 'none' : 'default';
-    }
-
+    // Aggiorna la posizione della telecamera
     update() {
         if (!this.model) return;
 
-        // Aggiorna zoom
+        // Aggiorna lo zoom in modo fluido
         this.cameraDistance = THREE.MathUtils.lerp(
             this.cameraDistance,
             this.targetCameraDistance,
@@ -82,19 +64,13 @@ export default class Camera {
         );
 
         // Calcola la posizione della telecamera
-        const quaternion = new THREE.Quaternion()
-            .setFromEuler(new THREE.Euler(this.cameraAngleY, this.cameraAngleX, 0, 'YXZ'));
-
-        // Calcola l'offset della telecamera
-        const offset = new THREE.Vector3(0, 20, this.cameraDistance) // Posizione sopra la scena
-            .applyQuaternion(quaternion);
-
-        // Posiziona la telecamera
+        const offset = new THREE.Vector3(0, 0, this.cameraDistance);
         this.instance.position.copy(this.model.position).add(offset);
-        this.instance.lookAt(this.model.position); // La telecamera guarda sempre verso il modello
-        this.instance.up.set(0, 0, 1); // Imposta l'orientamento corretto della telecamera (su Z)
+        this.instance.lookAt(this.model.position);
+        this.instance.up.set(0, 1, 0);
     }
 
+    // Aggiorna il rapporto di aspetto della telecamera al ridimensionamento della finestra
     updateAspectRatio() {
         this.instance.aspect = this.sizes.viewport.width / this.sizes.viewport.height;
         this.instance.updateProjectionMatrix();

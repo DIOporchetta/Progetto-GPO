@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import Camera from './Camera/camera.js';
-//import Collision from './Collision/Collision.js';
 import AudioManager from './AudioManager/audioManager.js';
 
 // Crea scena e renderer
@@ -21,10 +20,10 @@ const light = new THREE.DirectionalLight(0xffffff, 3);
 light.position.set(1, 1, 1).normalize();
 scene.add(light);
 scene.add(new THREE.AmbientLight(0x404040, 2));
-const light1 = new THREE.DirectionalLight(0xffffff, 1); // Aumenta l'intensità
-light.position.set(1, 1, 1).normalize();
-scene.add(light1);
 
+const light1 = new THREE.DirectionalLight(0xffffff, 1);
+light1.position.set(1, 1, 1).normalize();
+scene.add(light1);
 
 // Configurazione telecamera
 const cameraInstance = new Camera({
@@ -36,43 +35,68 @@ const cameraInstance = new Camera({
     },
     scene,
     model: null,
-    rendererDom: renderer.domElement // Deve essere il canvas del renderer
+    rendererDom: renderer.domElement
 });
 
-// Inizializza sistemi
-//const collisionManager = new Collision(scene);
+// Inizializza AudioManager
 const audioManager = new AudioManager(cameraInstance.instance);
 const loader = new GLTFLoader();
 
-
-
 // Variabili gioco
-let player, floor;
+let player, frontWheel, rearWheel, floor;
 const gravity = -0.01;
 const bounceFactor = 0.3;
 const floorHeight = -1.5;
 let velocityY = 0;
 let isFalling = true;
 let isPlayerActive = false;
-const moveSpeed = 0.1;
+const moveSpeed = 1;
 const keyState = {};
 
-// Carica modelli
+// Raggio ruote per il calcolo della rotazione
+const wheelRadius = 0.4;
+
+// Carica la carrozzeria della macchina
 loader.load('/vite-project/src/Model/car.glb', (gltf) => {
     player = gltf.scene;
-    player.scale.set(1, 1, 1);
+    player.scale.set(2, 2, 2);
     player.position.set(0, 15, 0);
     player.visible = false;
     scene.add(player);
-  //  collisionManager.addObject('player', player);
+    cameraInstance.model = player;
+});
+/*
+// Carica le ruote della macchina
+loader.load('/vite-project/src/Model/carbody.glb', (gltf) => {
+    player = gltf.scene;
+    player.scale.set(2, 2, 2);
+    player.position.set(0, 15, 0);
+    player.visible = false;
+    scene.add(player);
     cameraInstance.model = player;
 });
 
-loader.load('/vite-project/src/Model/floor.glb', (gltf) => {
+loader.load('/vite-project/src/Model/wheels.glb', (gltf) => {
+    const wheels = gltf.scene;
+
+    // Trova le due ruote nel modello
+    frontWheel = wheels.getObjectByName('frontWheel'); // Assicurati che il nome sia corretto
+    rearWheel = wheels.getObjectByName('rearWheel');
+
+    if (frontWheel && rearWheel) {
+        frontWheel.position.set(0.8, 15, 1.2); // Regola posizione rispetto alla carrozzeria
+        rearWheel.position.set(0.8, 15, -1.2);
+
+        scene.add(frontWheel);
+        scene.add(rearWheel);
+    }
+});*/
+
+// Carica il pavimento
+loader.load('/vite-project/src/Model/map.glb', (gltf) => {
     floor = gltf.scene;
     floor.position.set(0, floorHeight, 0);
     scene.add(floor);
-   //isionManager.addObject('floor', floor);
 });
 
 // Carica audio
@@ -99,6 +123,7 @@ function spawnPlayer() {
     }
 }
 
+// Aggiorna la posizione del giocatore e la rotazione delle ruote
 function updatePlayerPosition() {
     if (!player || !isPlayerActive) return;
 
@@ -116,8 +141,21 @@ function updatePlayerPosition() {
 
     if (moveDirection.length() > 0) {
         moveDirection.normalize();
+
+        // Calcola la distanza percorsa
+        let previousPosition = player.position.clone();
         player.position.add(moveDirection.multiplyScalar(moveSpeed));
 
+        const distanceMoved = previousPosition.distanceTo(player.position);
+
+        // Ruota le ruote in base alla distanza percorsa
+        if (frontWheel && rearWheel) {
+            const rotationAmount = distanceMoved / wheelRadius;
+            frontWheel.rotation.x -= rotationAmount;
+            rearWheel.rotation.x -= rotationAmount;
+        }
+
+        // Ruotare la carrozzeria verso la direzione di movimento
         const targetRotation = Math.atan2(moveDirection.x, moveDirection.z);
         let deltaRotation = targetRotation - player.rotation.y;
         deltaRotation = ((deltaRotation % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
@@ -126,21 +164,22 @@ function updatePlayerPosition() {
     }
 
     // Gravità
+
+    // Gravità
     velocityY += gravity;
     player.position.y += velocityY;
-    if (player.position.y < floorHeight) {
+    if (player.position.y <= floorHeight) {
         player.position.y = floorHeight;
         velocityY = -velocityY * bounceFactor;
         if (Math.abs(velocityY) < 0.01) velocityY = 0;
     }
-   // collisionManager.updateBoundingBox('player', player);
 }
 
 // Animazione
 function animate() {
     if (isFalling) {
         velocityY += gravity;
-        if (player && player.position.y < floorHeight) {
+        if (player && player.position.y <= floorHeight) {
             isFalling = false;
             spawnPlayer();
         }
