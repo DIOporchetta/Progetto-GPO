@@ -19,8 +19,8 @@ export default class Camera {
         );
 
         // Inizializza lo stato
-        this.cameraDistance = 20;
-        this.targetCameraDistance = 20;
+        this.cameraDistance = 50;
+        this.targetCameraDistance = 30;
 
         // Configurazioni
         this.ZOOM_SPEED = 1.5;
