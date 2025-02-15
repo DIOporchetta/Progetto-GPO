@@ -17,25 +17,19 @@ renderer.domElement.style.top = '0';
 renderer.domElement.style.left = '0';
 
 // Variabili di gioco
-let player = null;
-let floor = null;
-let carHB = null;
-let carHBHelper = null;
-let floorHB = null;
-let floorHBHelper = null;
-let carHBGeometry = null;
-let carHBMaterial = null;
-let floorHBGeometry = null;
-let floorHBMaterial = null;
-let floorSize = null;
-let carSize = null;
+let player = null, floor = null, test = null;
+let carHB = null, floorHB = null, testHB = null;
+let carHBHelper = null, floorHBHelper = null, testHBHelper = null;
+let carHBGeometry = null, floorHBGeometry = null, testHBGeometry = null;
+let carHBMaterial = null, floorHBMaterial = null, testHBMaterial = null;
+let floorSize = null, carSize = null, testSize = null;
 const gravity = -0.01;
 const bounceFactor = 0.3;
 const floorHeight = -1.5;
 let velocityY = 0.2;
 let isFalling = true;
 let isPlayerActive = false;
-const moveSpeed = 1.2;
+let moveSpeed = 0.5;
 const keyState = {};
 let currentSpeed = 0;
 const rotationSpeed = 0.08;
@@ -43,8 +37,7 @@ const speedLerpFactor = 0.08;
 let targetSpeed = 0;
 let collidableObjects = [];
 const collisionThreshold = 0.3;
-const playerRadius = 0.5;
-const deceleration = 0.9; // Aggiungi questa costante per lo slittamento
+let deceleration = 0.9; // Aggiungi questa costante per lo slittamento
 // Luci
 const light = new THREE.DirectionalLight(0xffffff, 3);
 light.position.set(1, 1, 1).normalize();
@@ -71,12 +64,22 @@ const cameraInstance = new Camera({
 // Inizializza AudioManager
 const audioManager = new AudioManager(cameraInstance.instance);
 const loader = new GLTFLoader();
+// Carica il suono del clacson
+audioManager.loadSound('clacson', 'vite-project/src/Sound/clacson.ogg', { volume: 1.0, loop: true })
+    .then(() => console.log('Audio caricato!'))
+    .catch((error) => console.error('Errore nel caricamento audio:', error));
+
+// Carica il suono del gas
+audioManager.loadSound('gas', 'vite-project/src/Sound/gas.ogg', { volume: 1.0, loop: true })
+    .then(() => console.log('Audio caricato!'))
+    .catch((error) => console.error('Errore nel caricamento audio:', error));
+
 
 // Carica la macchina
 loader.load('/vite-project/src/Model/car.glb', (gltf) => {
     player = gltf.scene;
     player.scale.set(1.5, 1.5, 1.5);
-    player.position.set(10, 50, 10);
+    player.position.set(0, 50, 0);
     player.visible = false;
     cameraInstance.model = player;
     scene.add(player);
@@ -102,6 +105,33 @@ loader.load('/vite-project/src/Model/car.glb', (gltf) => {
     scene.add(carHBHelper);
 });
 
+//test
+/*loader.load('/vite-project/src/Model/title.glb', (gltf) => {
+    test = gltf.scene;
+    test.scale.set(1.5, 1.5, 1.5);
+    test.position.set(50, 0, 50);
+    scene.add(test);
+
+    const testBox = new THREE.Box3().setFromObject(test);
+    testSize = new THREE.Vector3();
+    testBox.getSize(testSize);
+
+    const testBoxCenter = testBox.getCenter(test.position);
+
+    testHBGeometry = new THREE.BoxGeometry(testSize.x, testSize.y, testSize.z);
+    testHBMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
+    testHB = new THREE.Mesh(testHBGeometry, testHBMaterial);
+
+    testHB.position.copy(testBoxCenter);
+    testHB.rotation.copy(player.rotation);
+    scene.add(testHB);
+
+
+    testHBHelper = new THREE.BoxHelper(testHB, 0x00ff00);
+    scene.add(testHBHelper);
+});*/
+
+
 // Carica il pavimento
 loader.load('/vite-project/src/Model/map.glb', (gltf) => {
     floor = gltf.scene;
@@ -125,7 +155,7 @@ loader.load('/vite-project/src/Model/map.glb', (gltf) => {
         floorBox.min.y + (hitboxHeight / 2),
         floorBoxCenter.z
     );
-    
+
     scene.add(floorHB);
 
     floorHBHelper = new THREE.BoxHelper(floorHB, 0x00ff00);
@@ -137,7 +167,7 @@ function updateCarHitbox() {
     if (player && carHB) {
         const offset = player.userData.hitboxOffset.clone()
             .applyQuaternion(player.quaternion);
-        
+
         carHB.position.copy(player.position.clone().add(offset));
         carHB.rotation.copy(player.rotation);
         carHB.scale.set(1, 1, 1);
@@ -150,9 +180,26 @@ function checkCollisions() {
     if (carHB && floorHB) {
         if (CollisionManager.checkCollision(carHB, floorHB)) {
             velocityY = Math.max(velocityY, 0);
-            player.position.y = floorHB.position.y + carSize.y+0.1;
+            player.position.y = floorHB.position.y + carSize.y + 0.1;
         }
     }
+
+    if (carHB && testHB) {
+        if (CollisionManager.checkCollision(carHB, testHB) && !(keyState['s'] || keyState['ArrowDown'])) {
+            test.position.y = floorHB.position.y + testSize.y + 0.1;
+            console.log("collisione");
+
+            // Ferma completamente la macchina
+            currentSpeed = 0;
+            targetSpeed = 0;
+            moveSpeed = 0;
+            deceleration = 0;
+        } else {
+            moveSpeed = 1.2;
+            deceleration = 0.9;
+        }
+    }
+
 }
 
 // Funzione per far comparire il player
@@ -167,78 +214,79 @@ function spawnPlayer() {
 function updatePlayerPosition() {
     if (!player || !isPlayerActive) return;
 
-    const moveDirection = new THREE.Vector3();
-    const cameraForward = new THREE.Vector3();
-    const cameraRight = new THREE.Vector3();
+    const playerForward = new THREE.Vector3();
+    player.getWorldDirection(playerForward);
 
-    cameraInstance.instance.getWorldDirection(cameraForward);
-    cameraRight.crossVectors(cameraInstance.instance.up, cameraForward).normalize();
+    // 1. Determinazione della velocità target
+    let targetSpeed = 0;
+    if (keyState['w'] || keyState['ArrowUp']) targetSpeed = moveSpeed;
+    if (keyState['s'] || keyState['ArrowDown']) targetSpeed = -moveSpeed;
 
-    // Controllo input
-    let hasInput = false;
-    if (keyState['w'] || keyState['ArrowUp']) { moveDirection.add(cameraForward); hasInput = true; }
-    if (keyState['s'] || keyState['ArrowDown']) { moveDirection.sub(cameraForward); hasInput = true; }
-    if (keyState['a'] || keyState['ArrowLeft']) { moveDirection.add(cameraRight); hasInput = true; }
-    if (keyState['d'] || keyState['ArrowRight']) { moveDirection.sub(cameraRight); hasInput = true; }
+    // 2. Gestione rotazione solo durante il movimento
+    if (targetSpeed !== 0) {
+        if (keyState['a'] || keyState['ArrowLeft']) player.rotation.y += rotationSpeed;
+        if (keyState['d'] || keyState['ArrowRight']) player.rotation.y -= rotationSpeed;
+    }
 
-    if (moveDirection.length() > 0) {
-        moveDirection.normalize();
-        targetSpeed = moveSpeed;
-        
-        const collisionResult = CollisionManager.checkMovementCollisions(
-            carHB, 
-            moveDirection.clone().multiplyScalar(moveSpeed),
-            collidableObjects,
-            collisionThreshold
-        );
-
-        if (!collisionResult.collided) {
-            currentSpeed = THREE.MathUtils.lerp(currentSpeed, targetSpeed, speedLerpFactor);
-            
-            // Aggiorna rotazione solo se c'è input
-            const targetRotation = Math.atan2(moveDirection.x, moveDirection.z);
-            let deltaRotation = targetRotation - player.rotation.y;
-            deltaRotation = ((deltaRotation % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-            if (deltaRotation > Math.PI) deltaRotation -= Math.PI * 2;
-            player.rotation.y += deltaRotation * rotationSpeed;
-        } else {
-            currentSpeed *= 0.5; // Riduci la velocità in caso di collisione
-        }
+    // 3. Accelerazione/decelerazione con slittamento
+    if (targetSpeed !== 0) {
+        currentSpeed = THREE.MathUtils.lerp(currentSpeed, targetSpeed, speedLerpFactor);
     } else {
-        targetSpeed = 0;
-        // Applica decelerazione solo se non c'è input
         currentSpeed *= deceleration;
         if (Math.abs(currentSpeed) < 0.01) currentSpeed = 0;
     }
 
-    // Applica il movimento anche senza input (per lo slittamento)
-    if (currentSpeed > 0) {
-        const slidingDirection = new THREE.Vector3(
-            Math.sin(player.rotation.y),
-            0,
-            Math.cos(player.rotation.y)
-        ).normalize();
-        
-        player.position.add(slidingDirection.multiplyScalar(currentSpeed));
+    // 4. Calcolo direzione movimento (mantiene lo slittamento)
+    const slidingDirection = new THREE.Vector3(
+        Math.sin(player.rotation.y),
+        0,
+        Math.cos(player.rotation.y)
+    ).normalize();
+
+    // 5. Applica movimento con controllo collisioni
+    const movement = slidingDirection.clone().multiplyScalar(currentSpeed);
+    const collisionResult = CollisionManager.checkMovementCollisions(
+        carHB,
+        movement,
+        collidableObjects,
+        collisionThreshold
+    );
+
+    if (!collisionResult.collided) {
+        player.position.add(movement);
+    } else {
+        currentSpeed *= collisionResult.slideFactor || 0.5;
     }
 
-    // Gestione gravità
+    // 6. Gestione gravità e collisioni verticali
     velocityY += gravity;
     player.position.y += velocityY;
     checkCollisions();
     updateCarHitbox();
 }
 
+
+
 // Eventi tastiera
 window.addEventListener('keydown', (event) => {
     keyState[event.key] = true;
     if (event.key === ' ') spawnPlayer();
     if (event.key === 'c') audioManager.playSound('clacson');
-    if (event.key === 'x') audioManager.playSound('down');
+    if (event.key === 'g') {
+        if (currentSpeed != 0) {
+            moveSpeed = 1;
+            audioManager.playSound('gas');
+        }
+    }
 });
-
 window.addEventListener('keyup', (event) => {
     keyState[event.key] = false;
+    if (event.key === 'c') audioManager.stopSound('clacson');
+    event.preventDefault();
+    if (event.key === 'g') {
+        moveSpeed = 0.5;
+        audioManager.stopSound('gas');
+    }
 });
 
 // Animazione principale
