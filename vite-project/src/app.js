@@ -1,276 +1,279 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import CannonDebugger from 'cannon-es-debugger';
 import Camera from './Camera/camera.js';
 import AudioManager from './AudioManager/audioManager.js';
-import CannonDebugRenderer from './utils/cannonDebugRenderer.js';
 
-// Inizializzazione base
+
+let carModel, wheelModels = [], mapModel;
+const loader = new GLTFLoader();
+//-------------------------------------------
 const scene = new THREE.Scene();
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+
+
+
+const renderer = new THREE.WebGLRenderer({
+    antialias: true
+});
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-document.body.appendChild(renderer.domElement);
 renderer.domElement.style.position = 'absolute';
 renderer.domElement.style.top = '0';
 renderer.domElement.style.left = '0';
+document.body.appendChild(renderer.domElement);
 
-// Mondo fisico
-const world = new CANNON.World({
-    gravity: new CANNON.Vec3(0, -9.81, 0),
-    broadphase: new CANNON.NaiveBroadphase(),
-    solverIterations: 5
-});
-
-// Materiali fisici
-const carMaterial = new CANNON.Material('carMaterial');
-const groundMaterial = new CANNON.Material('groundMaterial');
-const wheelMaterial = new CANNON.Material('wheelMaterial');
-const carGroundContact = new CANNON.ContactMaterial(carMaterial, groundMaterial, { friction: 0.3, restitution: 0.1 });
-const wheelGroundContact = new CANNON.ContactMaterial(wheelMaterial, groundMaterial, { friction: 0.5, restitution: 0.2 });
-world.addContactMaterial(carGroundContact);
-world.addContactMaterial(wheelGroundContact);
-
-// Variabili di gioco
-let player = null;
-let carBody = null;
-let floorBody = null;
-let vehicle = null;
-let wheels = []; // Array per le ruote 3D
-let isPlayerActive = false;
-let engineForce = 0;
-let targetSteering = 0;
-const maxForce = 500;
-const maxVelocity = 20;
-const steeringSpeed = 0.05;
-const keyState = {};
-let debugEnabled = false;
-let lastTime = 0;
-const fixedTimeStep = 1 / 60;
-
-// Debug fisico
-const cannonDebugRenderer = new CannonDebugRenderer(scene, world);
-
-// Luci
-const directionalLight = new THREE.DirectionalLight(0xffffff, 5);
-directionalLight.position.set(25, 50, 25);
-directionalLight.castShadow = true;
-directionalLight.shadow.mapSize.set(2048, 2048);
-directionalLight.shadow.camera.near = 0.5;
-directionalLight.shadow.camera.far = 50;
-directionalLight.shadow.camera.top = 20;
-directionalLight.shadow.camera.bottom = -20;
-directionalLight.shadow.camera.left = -20;
-directionalLight.shadow.camera.right = 20;
-scene.add(directionalLight);
-scene.add(new THREE.AmbientLight(0x404040, 10));
-
-// Telecamera
 const cameraInstance = new Camera({
-    sizes: { viewport: { width: window.innerWidth, height: window.innerHeight } },
+    sizes: { 
+        viewport: { 
+            width: window.innerWidth, 
+            height: window.innerHeight 
+        } 
+    },
     scene,
     model: null,
     rendererDom: renderer.domElement
 });
 
-// Audio
+const world = new CANNON.World();
+world.gravity.set(0, -9.82, 0);
+
+const cannonDebugger = new CannonDebugger(scene, world);
+
 const audioManager = new AudioManager(cameraInstance.instance);
+audioManager.loadSound('clacson', 'vite-project/src/Sound/clacson.ogg', { volume: 1.0, loop: true })
+    .then(() => console.log('Audio caricato!'))
+    .catch((error) => console.error('Errore nel caricamento audio:', error));
 
-// Caricamento modelli
-const loader = new GLTFLoader();
-async function loadModels() {
-    const carPromise = new Promise((resolve, reject) => {
-        loader.load('/vite-project/src/Model/carbody.glb', resolve, undefined, reject);
-    });
-    const floorPromise = new Promise((resolve, reject) => {
-        loader.load('/vite-project/src/Model/map.glb', resolve, undefined, reject);
-    });
+// Carica il suono del gas
+audioManager.loadSound('gas', 'vite-project/src/Sound/gas.ogg', { volume: 1.0, loop: true })
+    .then(() => console.log('Audio caricato!'))
+    .catch((error) => console.error('Errore nel caricamento audio:', error));
 
-    try {
-        const [carGltf, floorGltf] = await Promise.all([carPromise, floorPromise]);
 
-        // Macchina (corpo)
-        player = carGltf.scene;
-        player.scale.set(1.5, 1.5, 1.5);
-        player.position.set(0, 0, 0); // Posizione iniziale più alta per appoggiare sulle ruote
-        player.visible = false;
-        player.castShadow = true;
-        scene.add(player);
-        cameraInstance.model = player;
+// Dimensioni principali
+const CHASSIS_WIDTH = 3.52;
+const CHASSIS_LENGTH = 1.5;
+const CHASSIS_HEIGHT = 0.5;
+const AXIS_WIDTH = 3;
 
-        // Corpo fisico della macchina
-        carBody = new CANNON.Body({
-            mass: 10,
-            position: new CANNON.Vec3(0, 0, 0), // Altezza iniziale sopra le ruote
-            angularDamping: 0.5,
-            linearDamping: 0.2,
-            material: carMaterial
-        });
-        carBody.addShape(new CANNON.Box(new CANNON.Vec3(1.5, 0.5, 3)), new CANNON.Vec3(0, 0, 0)); // Corpo più sottile
-        world.addBody(carBody);
-        vehicle = createVehicle();
-
-        // Pavimento
-        const floor = floorGltf.scene;
-        floor.position.set(0, -1.5, 0);
-        floor.receiveShadow = true;
-        scene.add(floor);
-
-        floorBody = new CANNON.Body({
-            mass: 0,
-            shape: new CANNON.Box(new CANNON.Vec3(150, 1, 150)),
-            position: new CANNON.Vec3(0, -2, 0),
-            material: groundMaterial
-        });
-        world.addBody(floorBody);
-
-        console.log("Modelli caricati con successo!");
-    } catch (error) {
-        console.error("Errore nel caricamento:", error);
-    }
-}
-
-// Creazione del veicolo con ruote visibili
-function createVehicle() {
-    const vehicle = new CANNON.RaycastVehicle({ chassisBody: carBody });
-    const wheelOptions = {
-        radius: 0.4,
-        directionLocal: new CANNON.Vec3(0, -1, 0),
-        suspensionStiffness: 30,
-        suspensionRestLength: 0.5,
-        frictionSlip: 3,
-        dampingRelaxation: 2.3,
-        dampingCompression: 4.4,
-        maxSuspensionForce: 10000,
-        rollInfluence: 0.01,
-        axleLocal: new CANNON.Vec3(1, 0, 0),
-        maxSuspensionTravel: 0.3,
-        customSlidingRotationalSpeed: -30,
-        useCustomSlidingRotationalSpeed: true,
-        material: wheelMaterial
-    };
-
-    const wheelPositions = [
-        new CANNON.Vec3(-1.2, -0.5, 2),  // Anteriore sinistra
-        new CANNON.Vec3(1.2, -0.5, 2),   // Anteriore destra
-        new CANNON.Vec3(-1.2, -0.5, -2), // Posteriore sinistra
-        new CANNON.Vec3(1.2, -0.5, -2)   // Posteriore destra
-    ];
-
-    // Materiale per le ruote
-    const wheelGeometry = new THREE.SphereGeometry(0.4, 32, 32);
-    const wheelMeshMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
-
-    wheelPositions.forEach((pos, index) => {
-        wheelOptions.chassisConnectionPointLocal = pos.clone();
-        vehicle.addWheel(wheelOptions);
-
-        // Creazione della ruota visibile
-        const wheel = new THREE.Mesh(wheelGeometry, wheelMeshMaterial);
-        wheel.castShadow = true;
-        wheel.receiveShadow = true;
-        scene.add(wheel);
-        wheels[index] = wheel;
-    });
-
-    vehicle.addToWorld(world);
-    return vehicle;
-}
-
-// Attivazione del player
-function spawnPlayer() {
-    if (!isPlayerActive && player) {
-        player.visible = true;
-        isPlayerActive = true;
-        console.log("Player attivato!");
-    }
-}
-
-// Aggiornamento posizione
-function updatePlayerPosition() {
-    if (!player || !isPlayerActive || !carBody || !vehicle) return;
-
-    const velocity = carBody.velocity.length();
-
-    if (keyState['w'] || keyState['ArrowUp']) {
-        if (velocity < maxVelocity) engineForce = Math.min(engineForce + 10, maxForce);
-    } else if (keyState['s'] || keyState['ArrowDown']) {
-        if (velocity < maxVelocity) engineForce = Math.max(engineForce - 10, -maxForce);
-    } else if (keyState[' ']) {
-        
-        engineForce *= 0.8;
-        carBody.velocity.scale(0.9, carBody.velocity);
-    } else {
-        engineForce *= 0.9;
-    }
-    vehicle.applyEngineForce(engineForce, 2);
-    vehicle.applyEngineForce(engineForce, 3);
-
-    if (keyState['a'] || keyState['ArrowLeft']) {
-        targetSteering = Math.min(targetSteering + steeringSpeed, 0.5);
-    } else if (keyState['d'] || keyState['ArrowRight']) {
-        targetSteering = Math.max(targetSteering - steeringSpeed, -0.5);
-    } else {
-        targetSteering *= 0.9;
-    }
-    vehicle.setSteeringValue(targetSteering, 0);
-    vehicle.setSteeringValue(targetSteering, 1);
-
-    // Sincronizza corpo
-    player.position.copy(carBody.position);
-    player.quaternion.copy(carBody.quaternion);
-
-    // Sincronizza ruote
-    vehicle.wheelInfos.forEach((wheelInfo, index) => {
-        const wheel = wheels[index];
-        const worldPos = new CANNON.Vec3();
-        wheelInfo.worldTransform.position.copy(worldPos);
-        wheel.position.set(worldPos.x, worldPos.y, worldPos.z);
-
-        const wheelQuat = new CANNON.Quaternion();
-        wheelInfo.worldTransform.quaternion.copy(wheelQuat);
-        wheel.quaternion.set(wheelQuat.x, wheelQuat.y, wheelQuat.z, wheelQuat.w);
-
-        // Rotazione delle ruote basata sulla velocità
-        const rotationSpeed = velocity / wheelInfo.radius;
-        wheel.rotateOnAxis(new THREE.Vector3(1, 0, 0), rotationSpeed * fixedTimeStep);
-    });
-}
-
-// Eventi
-window.addEventListener('keydown', (event) => {
-    keyState[event.key] = true;
-    if (event.key === ' ') spawnPlayer();
-    if (event.key === 'c') audioManager.playSound('clacson');
-    if (event.key === 'x') audioManager.playSound('down');
-    if (event.key === 'd') debugEnabled = !debugEnabled;
+loader.load('/vite-project/src/Model/carbody.glb', (gltf) => {
+    carModel = gltf.scene;
+    carModel.scale.set(1.5, 1.5, 1.5); // Regola in base al modello
+    carModel.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI / 2); // Ruota il modello
+    cameraInstance.model = carModel;
+    scene.add(carModel);
 });
 
-window.addEventListener('keyup', (event) => {
-    keyState[event.key] = false;
+loader.load('/vite-project/src/Model/wheel2.glb', (gltf) => {
+    const wheel = gltf.scene;
+    wheel.scale.set(1.6, 1.6, 1.6);
+
+    // Crea 4 istanze della ruota
+    for (let i = 0; i < 4; i++) {
+        const wheelClone = wheel.clone();
+        wheelModels.push(wheelClone);
+        scene.add(wheelClone);
+    }
 });
 
-window.addEventListener('resize', () => {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    renderer.setSize(width, height);
-    cameraInstance.instance.aspect = width / height;
-    cameraInstance.instance.updateProjectionMatrix();
+loader.load('/vite-project/src/Model/map.glb', (gltf) => {
+    mapModel = gltf.scene;
+    mapModel.scale.set(1.5, 1.5, 1.5); // Regola in base al modello
+    //carModel.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI / 2); // Ruota il modello
+    scene.add(mapModel);
 });
 
+
+const axesHelper = new THREE.AxesHelper(8);
+scene.add(axesHelper);
+
+
+// Setup illuminazione
+const light = new THREE.DirectionalLight(0xffffff, 3);
+light.position.set(1, 1, 1).normalize();
+scene.add(light);
+scene.add(new THREE.AmbientLight(0x404040, 2));
+
+const light1 = new THREE.DirectionalLight(0xffffff, 1);
+light1.position.set(1, 1, 1).normalize();
+scene.add(light1);
+
+
+
+// Terreno
+const groundMaterial = new CANNON.Material('ground');
+
+const groundBody = new CANNON.Body({
+    mass: 0,
+    material: groundMaterial,
+    shape: new CANNON.Plane()
+});
+groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+world.addBody(groundBody);
+
+// Veicolo
+
+const carBody = new CANNON.Body({
+    mass: 800, // Aumenta la massa (kg)
+    position: new CANNON.Vec3(0, 10, 0),
+    shape: new CANNON.Box(new CANNON.Vec3(CHASSIS_WIDTH, CHASSIS_HEIGHT, CHASSIS_LENGTH)),
+    linearDamping: 0.5,  // Smorzamento lineare
+    angularDamping: 0.7   // Smorzamento angolare
+});
+
+const vehicle = new CANNON.RigidVehicle({
+    chassisBody: carBody
+});
+const testBoxBody = new CANNON.Body({ mass: 1 });
+testBoxBody.addShape(new CANNON.Box(new CANNON.Vec3(1,1,1)));
+testBoxBody.position.set(0, 10, 0);
+world.addBody(testBoxBody);
+// Configurazione ruote
+const wheelSettings = {
+    axis: new CANNON.Vec3(0, 0, 1),
+    mass: 35,
+    shape: new CANNON.Cylinder(0.5, 0.5, 0.5, 100),
+    //shape: new CANNON.Sphere(0.5),
+    material: new CANNON.Material('wheel'),
+    down: new CANNON.Vec3(0, -1, 0),
+    angularDamping: 0.8, // Aumenta lo smorzamento angolare
+    suspension: {
+        stiffness: 200,   // Rigidità ridotta
+        restLength: 0.3, // Lunghezza a riposo più corta
+        damping: 30,     // Aggiungi damping alla sospensione
+        maxForce: 2500   // Forza massima aumentata
+    }
+    
+};
+// Materiale contatto ruote-terreno
+world.addContactMaterial(new CANNON.ContactMaterial(
+    wheelSettings.material,
+    groundMaterial,
+    {
+        friction: 3,
+        restitution: 0.01
+    }
+));
+
+// Posizioni ruote [x, z]
+const wheelPositions = [
+    [-2, AXIS_WIDTH / 2],  // Anteriore sinistra
+    [-2, -AXIS_WIDTH / 2], // Posteriore sinistra
+    [2, AXIS_WIDTH / 2],  // Anteriore destra
+    [2, -AXIS_WIDTH / 2]  // Posteriore destra
+];
+
+// Creazione ruote
+wheelPositions.forEach(([x, z]) => {
+    const wheelBody = new CANNON.Body({
+        mass: wheelSettings.mass,
+        material: wheelSettings.material,
+    });
+
+    const correctRotation = (new CANNON.Quaternion()).setFromAxisAngle(new CANNON.Vec3(1, 0, 0), Math.PI / 2);
+    wheelBody.addShape(wheelSettings.shape, new CANNON.Vec3(0, 0, 0), correctRotation);
+    wheelBody.angularDamping = wheelSettings.angularDamping;
+
+    vehicle.addWheel({
+        body: wheelBody,
+        position: new CANNON.Vec3(x, -0.5, z), // Usa l'offset Y
+        axis: wheelSettings.axis,
+        direction: wheelSettings.down,
+        suspensionStiffness: wheelSettings.suspension.stiffness,
+        suspensionRestLength: wheelSettings.suspension.restLength,
+        suspensionDamping: wheelSettings.suspension.damping,
+        maxSuspensionForce: wheelSettings.suspension.maxForce
+    });
+});
+
+vehicle.addToWorld(world);
+
+// Controlli
+document.addEventListener('keydown', (event) => {
+    const maxSteerVal = Math.PI / 8;
+    const maxForce = 20000;
+
+    switch (event.key) {
+        case 'c':
+            audioManager.playSound('clacson')
+            break;
+        case 'w':
+        case 'ArrowUp':
+            vehicle.setWheelForce(maxForce, 0);
+            vehicle.setWheelForce(maxForce, 1);
+            break;
+
+        case 's':
+        case 'ArrowDown':
+            vehicle.setWheelForce(-maxForce / 2, 0);
+            vehicle.setWheelForce(-maxForce / 2, 1);
+            break;
+
+        case 'a':
+        case 'ArrowLeft':
+            vehicle.setSteeringValue(maxSteerVal, 0);
+            vehicle.setSteeringValue(maxSteerVal, 1);
+            break;
+
+        case 'd':
+        case 'ArrowRight':
+            vehicle.setSteeringValue(-maxSteerVal, 0);
+            vehicle.setSteeringValue(-maxSteerVal, 1);
+            break;
+    }
+});
+
+document.addEventListener('keyup', (event) => {
+    switch (event.key) {
+        case 'c':
+            audioManager.stopSound('clacson')
+            break;
+        case 'w':
+        case 'ArrowUp':
+        case 's':
+        case 'ArrowDown':
+            vehicle.setWheelForce(0, 0);
+            vehicle.setWheelForce(0, 1);
+            break;
+
+        case 'a':
+        case 'ArrowLeft':
+        case 'd':
+        case 'ArrowRight':
+            vehicle.setSteeringValue(0, 0);
+            vehicle.setSteeringValue(0, 1);
+            break;
+    }
+});
 // Animazione
-function animate(currentTime) {
-    const deltaTime = (currentTime - lastTime) / 1000;
-    lastTime = currentTime;
+
+function animate() {
+    world.step(1 / 60);
+    // Aggiorna scocca
+    if (carModel) {
+        carModel.position.copy(new CANNON.Vec3(carBody.position.x, carBody.position.y-1, carBody.position.z));
+        carModel.quaternion.copy(carBody.quaternion);
+    }
+
+    // Aggiorna ruote
+    vehicle.wheelBodies.forEach((wheelBody, index) => {
+        if (wheelModels[index]) {
+            const wheelMesh = wheelModels[index];
+
+            // Copia posizione e rotazione dal corpo fisico
+            //wheelMesh.position.copy(new CANNON.Vec3(wheelBody.position.x, wheelBody.position.y-0.5, wheelBody.position.z));
+            wheelMesh.position.copy(wheelBody.position);
+            wheelMesh.quaternion.copy(wheelBody.quaternion);
+
+            // Rotazione aggiuntiva per allineare il modello (se necessario)
+            wheelMesh.rotateX(Math.PI / 2);
+        }
+    });
+    cannonDebugger.update();
     cameraInstance.update();
-    world.step(fixedTimeStep);
-    if (debugEnabled) cannonDebugRenderer.update();
-    if (isPlayerActive) updatePlayerPosition();
     renderer.render(scene, cameraInstance.instance);
     requestAnimationFrame(animate);
 }
 
-// Avvio
-loadModels().then(() => requestAnimationFrame(animate));
+animate();
