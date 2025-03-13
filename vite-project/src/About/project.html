@@ -11,4 +11,33 @@
     <a href="/index.html">BACK</a>
     
 </body>
+<script>
+
+const starsContainer = document.querySelector('.stars-container');
+
+function createStar() {
+  const star = document.createElement('div');
+  star.classList.add('star');
+  
+  star.style.left = `${Math.random() * 100}vw`;
+  star.style.top = `${Math.random() * 100}vh`;
+  
+  const duration = Math.random() * 3 + 2; // Durata casuale tra 2 e 5 secondi
+  star.style.animationDuration = `${duration}s`;
+  
+  starsContainer.appendChild(star);
+  
+  star.addEventListener('animationend', () => {
+    star.remove(); // Rimuove la stella al termine dell'animazione
+  });
+}
+
+function generateStars() {
+  setInterval(createStar, 100); // Crea una stella ogni 100ms
+}
+
+// Avvia l'effetto delle stelle
+generateStars();
+</script>
+
 </html>
