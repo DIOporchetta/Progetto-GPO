@@ -259,10 +259,53 @@ document.addEventListener('keyup', (event) => {
             break;
     }
 });
+
+const hitboxMaterial = new CANNON.Material( 'Material');
+const hitboxes = [];
+hitboxes.push(createHitbox('house', new CANNON.Vec3(-128, 0, -10), { x: 27, y: 60, z: 45 },hitboxMaterial, world, scene));
+hitboxes.push(createHitbox('tree', new CANNON.Vec3(-10, 0, -5), { x: 5, y: 20, z: 5 }, hitboxMaterial, world, scene));
+hitboxes.push(createHitbox('tree', new CANNON.Vec3(-25, 0,-1), { x: 8, y: 30, z: 7 }, hitboxMaterial, world, scene));
+hitboxes.push(createHitbox('tree', new CANNON.Vec3(23, 0, -65), { x: 3, y: 40, z: 3 }, hitboxMaterial, world, scene));
+// Funzione per aggiungere una hitbox
+function createHitbox(name, position, dimensions, material, world, scene) {
+    // Crea la hitbox fisica
+
+    const hitboxShape = new CANNON.Box(new CANNON.Vec3(dimensions.x / 2, dimensions.y / 2, dimensions.z / 2));
+    const hitboxBody = new CANNON.Body({
+        mass: 0, // Statico, non si muove
+        material: hitboxMaterial,
+        position: position
+    });
+    hitboxBody.addShape(hitboxShape);
+    
+    // Aggiungi la hitbox al mondo fisico
+    world.addBody(hitboxBody);
+
+    // Crea il modello 3D della hitbox
+    const hitboxMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(dimensions.x, dimensions.y, dimensions.z),
+        new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true })
+    );
+    hitboxMesh.position.copy(hitboxBody.position);
+    scene.add(hitboxMesh);
+
+    // Restituisci un oggetto che contiene il corpo fisico e il modello 3D
+    return {
+        body: hitboxBody,
+        mesh: hitboxMesh
+    };
+}
+
+
+
 // Animazione
 
 function animate() {
     world.step(1 / 60);
+
+    hitboxes.forEach(hitbox => {
+        hitbox.mesh.position.copy(hitbox.body.position);
+    });
     // Aggiorna scocca
     if (carModel) {
         carModel.position.copy(new CANNON.Vec3(carBody.position.x, carBody.position.y-1, carBody.position.z));
