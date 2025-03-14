@@ -82,36 +82,41 @@
       star.style.left = `${Math.random() * 100}vw`;
       star.style.top = `${Math.random() * 100}vh`;
       
-      const duration = Math.random() * 3 + 2; // Durata casuale tra 2 e 5 secondi
+      const duration = Math.random() * 3 + 2; 
       star.style.animationDuration = `${duration}s`;
       
       starsContainer.appendChild(star);
       
       star.addEventListener('animationend', () => {
-        star.remove(); // Rimuove la stella al termine dell'animazione
+        star.remove(); 
       });
     }
 
     function generateStars() {
-      setInterval(createStar, 100); // Crea una stella ogni 100ms
+    let lastTime = 0;
+    function animate(time) {
+      if (time - lastTime > 100) {
+        createStar();
+        lastTime = time;
+      }
+      requestAnimationFrame(animate);
     }
+    requestAnimationFrame(animate);
+  }
 
-    // Avvia l'effetto delle stelle
     generateStars();
 
-    // Logica del bottone esistente
     document.getElementById("loadScript").addEventListener("click", function() {
       const script = document.createElement("script");
       script.type = "module";
       script.src = "/vite-project/src/app.js";
       document.body.appendChild(script);
-      this.remove(); // Rimuove il bottone dopo il click
+      this.remove();
 
-      // Nasconde la navbar con un'animazione
       const navbar = document.querySelector("nav");
       navbar.style.transition = "transform 0.5s ease-in-out, opacity 0.5s";
-      navbar.style.transform = "translateY(-100%)"; // Sposta la navbar verso l'alto
-      navbar.style.opacity = "0"; // La rende trasparente
+      navbar.style.transform = "translateY(-100%)"; 
+      navbar.style.opacity = "0"; 
     });
   </script>
 </body>

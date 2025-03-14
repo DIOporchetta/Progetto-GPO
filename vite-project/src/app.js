@@ -57,6 +57,10 @@ const CHASSIS_LENGTH = 1.5;
 const CHASSIS_HEIGHT = 0.5;
 const AXIS_WIDTH = 3;
 
+const suspensionStiffness = 50;  // Più alto, meno rimbalzo
+const suspensionDamping = 500;     // Smorza il rimbalzo
+const suspensionCompression = 4; // Assorbe l'urto iniziale
+
 loader.load('/vite-project/src/Model/carbody.glb', (gltf) => {
     carModel = gltf.scene;
     carModel.scale.set(1.5, 1.5, 1.5); // Regola in base al modello
@@ -80,7 +84,6 @@ loader.load('/vite-project/src/Model/wheel2.glb', (gltf) => {
 loader.load('/vite-project/src/Model/map.glb', (gltf) => {
     mapModel = gltf.scene;
     mapModel.scale.set(1.5, 1.5, 1.5); // Regola in base al modello
-    //carModel.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI / 2); // Ruota il modello
     scene.add(mapModel);
 });
 
@@ -101,15 +104,17 @@ scene.add(light1);
 
 
 
-// Terreno
+// Terreno con un Box sottile
 const groundMaterial = new CANNON.Material('ground');
 
 const groundBody = new CANNON.Body({
-    mass: 0,
+    mass: 0, // Statico
     material: groundMaterial,
-    shape: new CANNON.Plane()
+    shape: new CANNON.Box(new CANNON.Vec3(200, 0.1, 200)) // 100x100 con 0.1 di altezza
 });
-groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+
+// Posiziona il terreno a y = 0
+groundBody.position.y = -0.05;  // Metà dello spessore sotto lo zero
 world.addBody(groundBody);
 
 // Veicolo
@@ -118,9 +123,17 @@ const carBody = new CANNON.Body({
     mass: 800, // Aumenta la massa (kg)
     position: new CANNON.Vec3(0, 10, 0),
     shape: new CANNON.Box(new CANNON.Vec3(CHASSIS_WIDTH, CHASSIS_HEIGHT, CHASSIS_LENGTH)),
-    linearDamping: 0.5,  // Smorzamento lineare
-    angularDamping: 0.7   // Smorzamento angolare
+
+    suspensionStiffness: suspensionStiffness,
+    suspensionDamping: suspensionDamping,
+    suspensionCompression: suspensionCompression,
+    maxSuspensionTravel: 0.3,
+    customSlidingRotationalSpeed: -0.1,
+    useCustomSlidingRotationalSpeed: true
 });
+
+
+
 
 const vehicle = new CANNON.RigidVehicle({
     chassisBody: carBody
@@ -129,30 +142,30 @@ const testBoxBody = new CANNON.Body({ mass: 1 });
 testBoxBody.addShape(new CANNON.Box(new CANNON.Vec3(1,1,1)));
 testBoxBody.position.set(0, 10, 0);
 world.addBody(testBoxBody);
-// Configurazione ruote
+
+// Configurazione corretta delle ruote
 const wheelSettings = {
     axis: new CANNON.Vec3(0, 0, 1),
-    mass: 35,
+    mass: 100,
     shape: new CANNON.Cylinder(0.5, 0.5, 0.5, 100),
-    //shape: new CANNON.Sphere(0.5),
     material: new CANNON.Material('wheel'),
     down: new CANNON.Vec3(0, -1, 0),
-    angularDamping: 0.8, // Aumenta lo smorzamento angolare
+    angularDamping: 0.8,
     suspension: {
-        stiffness: 200,   // Rigidità ridotta
-        restLength: 0.3, // Lunghezza a riposo più corta
-        damping: 30,     // Aggiungi damping alla sospensione
-        maxForce: 2500   // Forza massima aumentata
+        stiffness: suspensionStiffness,     // Stiffness corretta
+        restLength: 0.9,                    // Lunghezza a riposo
+        damping: suspensionDamping,         // Smorza il rimbalzo
+        compression: suspensionCompression, // Compressione
+        maxForce: 5000                     // Forza massima
     }
-    
 };
 // Materiale contatto ruote-terreno
 world.addContactMaterial(new CANNON.ContactMaterial(
     wheelSettings.material,
     groundMaterial,
     {
-        friction: 3,
-        restitution: 0.01
+        friction: 0.5,
+        restitution: 0.001
     }
 ));
 
@@ -192,7 +205,7 @@ vehicle.addToWorld(world);
 // Controlli
 document.addEventListener('keydown', (event) => {
     const maxSteerVal = Math.PI / 8;
-    const maxForce = 20000;
+    const maxForce = 2000;
 
     switch (event.key) {
         case 'c':
