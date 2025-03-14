@@ -263,12 +263,20 @@ document.addEventListener('keyup', (event) => {
 const hitboxMaterial = new CANNON.Material( 'Material');
 const hitboxes = [];
 hitboxes.push(createHitbox('house', new CANNON.Vec3(-128, 0, -10), { x: 27, y: 60, z: 45 },hitboxMaterial, world, scene));
-hitboxes.push(createHitbox('tree', new CANNON.Vec3(-10, 0, -5), { x: 5, y: 20, z: 5 }, hitboxMaterial, world, scene));
 hitboxes.push(createHitbox('tree', new CANNON.Vec3(-25, 0,-1), { x: 8, y: 30, z: 7 }, hitboxMaterial, world, scene));
 hitboxes.push(createHitbox('tree', new CANNON.Vec3(23, 0, -65), { x: 3, y: 40, z: 3 }, hitboxMaterial, world, scene));
+hitboxes.push(createHitbox('tree', new CANNON.Vec3(-117, 0, -108), { x: 5, y: 20, z: 5 }, hitboxMaterial, world, scene));
+hitboxes.push(createHitbox('tree', new CANNON.Vec3(136, 0, -160), { x: 10, y: 40, z: 10 }, hitboxMaterial, world, scene));
+hitboxes.push(createHitbox('tree', new CANNON.Vec3(160, 0, -153), { x: 7, y: 20, z: 7 }, hitboxMaterial, world, scene));
+hitboxes.push(createHitbox('PORTFOLIO', new CANNON.Vec3(0, 0, -162), { x: 80, y:40, z: 15 }, hitboxMaterial, world, scene));
+hitboxes.push(createHitbox('tree', new CANNON.Vec3(-165, 0, -163), { x: 5, y: 40, z: 5 }, hitboxMaterial, world, scene));
+hitboxes.push(createHitbox('tree', new CANNON.Vec3(-142, 0, -185), { x: 5, y: 40, z: 5 }, hitboxMaterial, world, scene));
+hitboxes.push(createHitbox('POINTER', new CANNON.Vec3(20, 0, 32), { x: 5, y: 40, z: 7 }, hitboxMaterial, world, scene));
+hitboxes.push(createHitbox('MULIN', new CANNON.Vec3(135, 0, 50), { x: 18, y: 60, z: 25 }, hitboxMaterial, world, scene));
 // Funzione per aggiungere una hitbox
 function createHitbox(name, position, dimensions, material, world, scene) {
     // Crea la hitbox fisica
+
 
     const hitboxShape = new CANNON.Box(new CANNON.Vec3(dimensions.x / 2, dimensions.y / 2, dimensions.z / 2));
     const hitboxBody = new CANNON.Body({
