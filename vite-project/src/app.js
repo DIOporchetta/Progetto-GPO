@@ -8,14 +8,14 @@ import AudioManager from './AudioManager/audioManager.js';
 
 let carModel, wheelModels = [], mapModel;
 const loader = new GLTFLoader();
-//-------------------------------------------
 const scene = new THREE.Scene();
-
 
 
 const renderer = new THREE.WebGLRenderer({
     antialias: true
 });
+
+
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.domElement.style.position = 'absolute';
@@ -63,8 +63,8 @@ const suspensionCompression = 4; // Assorbe l'urto iniziale
 
 loader.load('/vite-project/src/Model/carbody.glb', (gltf) => {
     carModel = gltf.scene;
-    carModel.scale.set(1.5, 1.5, 1.5); // Regola in base al modello
-    carModel.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI / 2); // Ruota il modello
+    carModel.scale.set(1.5, 1.5, 1.5); 
+    carModel.rotateOnAxis(new THREE.Vector3(2, 0, 1), Math.PI / 2); 
     cameraInstance.model = carModel;
     scene.add(carModel);
 });
@@ -83,7 +83,7 @@ loader.load('/vite-project/src/Model/wheel2.glb', (gltf) => {
 
 loader.load('/vite-project/src/Model/map.glb', (gltf) => {
     mapModel = gltf.scene;
-    mapModel.scale.set(1.5, 1.5, 1.5); // Regola in base al modello
+    mapModel.scale.set(1.5, 1.5, 1.5); 
     scene.add(mapModel);
 });
 
@@ -110,17 +110,17 @@ const groundMaterial = new CANNON.Material('ground');
 const groundBody = new CANNON.Body({
     mass: 0, // Statico
     material: groundMaterial,
-    shape: new CANNON.Box(new CANNON.Vec3(200, 0.1, 200)) // 100x100 con 0.1 di altezza
+    shape: new CANNON.Box(new CANNON.Vec3(200, 0.1, 200)) 
 });
 
 // Posiziona il terreno a y = 0
-groundBody.position.y = -0.05;  // Metà dello spessore sotto lo zero
+groundBody.position.y = -0.05;  
 world.addBody(groundBody);
 
 // Veicolo
 
 const carBody = new CANNON.Body({
-    mass: 800, // Aumenta la massa (kg)
+    mass: 500, 
     position: new CANNON.Vec3(0, 10, 0),
     shape: new CANNON.Box(new CANNON.Vec3(CHASSIS_WIDTH, CHASSIS_HEIGHT, CHASSIS_LENGTH)),
 
@@ -156,7 +156,7 @@ const wheelSettings = {
         restLength: 0.9,                    // Lunghezza a riposo
         damping: suspensionDamping,         // Smorza il rimbalzo
         compression: suspensionCompression, // Compressione
-        maxForce: 5000                     // Forza massima
+        maxForce: 500                     // Forza massima
     }
 };
 // Materiale contatto ruote-terreno
@@ -277,6 +277,7 @@ hitboxes.push(createHitbox('tree', new CANNON.Vec3(147, 0, 92), { x: 3, y: 40, z
 hitboxes.push(createHitbox('tree', new CANNON.Vec3(145, 0, 77), { x: 3, y: 10, z: 3 }, hitboxMaterial, world, scene));
 hitboxes.push(createHitbox('tree', new CANNON.Vec3(156, 0, 86), { x: 12, y: 10, z: 3 }, hitboxMaterial, world, scene));
 hitboxes.push(createHitbox('house', new CANNON.Vec3(-179, 0, -53), { x: 24, y: 40, z: 69 },hitboxMaterial, world, scene));
+
 // Funzione per aggiungere una hitbox
 function createHitbox(name, position, dimensions, material, world, scene) {
     // Crea la hitbox fisica
