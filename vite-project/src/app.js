@@ -57,14 +57,14 @@ const CHASSIS_LENGTH = 1.5;
 const CHASSIS_HEIGHT = 0.5;
 const AXIS_WIDTH = 3;
 
-const suspensionStiffness = 50;  // Più alto, meno rimbalzo
-const suspensionDamping = 500;     // Smorza il rimbalzo
-const suspensionCompression = 4; // Assorbe l'urto iniziale
+const suspensionStiffness = 500;  // Più alto, meno rimbalzo
+const suspensionDamping = 5000;     // Smorza il rimbalzo
+const suspensionCompression = 0; // Assorbe l'urto iniziale
 
 loader.load('/vite-project/src/Model/carbody.glb', (gltf) => {
     carModel = gltf.scene;
     carModel.scale.set(1.5, 1.5, 1.5); 
-    carModel.rotateOnAxis(new THREE.Vector3(2, 0, 1), Math.PI / 2); 
+    carModel.rotateOnAxis(new THREE.Vector3(0, 1, 0), Math.PI / 2);
     cameraInstance.model = carModel;
     scene.add(carModel);
 });
@@ -113,14 +113,14 @@ const groundBody = new CANNON.Body({
     shape: new CANNON.Box(new CANNON.Vec3(200, 0.1, 200)) 
 });
 
-// Posiziona il terreno a y = 0
+// Posiziona il terreno 
 groundBody.position.y = -0.05;  
 world.addBody(groundBody);
 
 // Veicolo
 
 const carBody = new CANNON.Body({
-    mass: 500, 
+    mass: 2000, 
     position: new CANNON.Vec3(0, 10, 0),
     shape: new CANNON.Box(new CANNON.Vec3(CHASSIS_WIDTH, CHASSIS_HEIGHT, CHASSIS_LENGTH)),
 
@@ -205,7 +205,7 @@ vehicle.addToWorld(world);
 // Controlli
 document.addEventListener('keydown', (event) => {
     const maxSteerVal = Math.PI / 8;
-    const maxForce = 2000;
+    const maxForce = 6000;
 
     switch (event.key) {
         case 'c':
@@ -309,6 +309,51 @@ function createHitbox(name, position, dimensions, material, world, scene) {
     };
 }
 
+function flipcar() {
+    const quaternion = carBody.quaternion;
+    const upVector = new CANNON.Vec3(0, 1, 0);
+    const worldUp = quaternion.vmult(upVector);
+    const globalUp = new CANNON.Vec3(0, 1, 0);
+    const dotProduct = worldUp.dot(globalUp);
+    
+    if (dotProduct < 0.2) {
+        // Salva la direzione "avanti" originale del veicolo
+        const forwardVector = new CANNON.Vec3(1, 0, 0); // Direzione "avanti" locale (asse X)
+        const worldForward = quaternion.vmult(forwardVector);
+        worldForward.y = 0; // Proietta sul piano XZ
+        worldForward.normalize();
+        const yawAngle = Math.atan2(worldForward.z, worldForward.x);
+
+        // Resetta l'orientamento per riportarlo verticale
+        carBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), 0);
+        
+        // Riapplica la rotazione Y originale
+        const yawQuaternion = new CANNON.Quaternion();
+        yawQuaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), yawAngle + Math.PI / 2); // Aggiusta per il modello
+        carBody.quaternion.mult(yawQuaternion, carBody.quaternion);
+        
+        // Solleva il veicolo per evitare incastri
+        carBody.position.y += 1.5; // Aumenta leggermente il sollevamento
+        
+        // Resetta velocità e forze
+        carBody.angularVelocity.set(0, 0, 0);
+        carBody.velocity.set(0, 0, 0);
+        
+        // Resetta le forze sulle ruote per sicurezza
+        vehicle.wheelBodies.forEach((wheel, index) => {
+            vehicle.setWheelForce(0, index); // Azzera tutte le forze sulle ruote
+            wheel.angularVelocity.set(0, 0, 0); // Resetta la rotazione delle ruote
+            wheel.velocity.set(0, 0, 0); // Resetta la velocità delle ruote
+        });
+
+        // Log per debug
+        console.log("Ribaltamento corretto:");
+        console.log("Posizione:", carBody.position);
+        console.log("Quaternion:", carBody.quaternion);
+        console.log("Velocità chassis:", carBody.velocity);
+    }
+}
+
 
 
 // Animazione
@@ -339,6 +384,7 @@ function animate() {
             wheelMesh.rotateX(Math.PI / 2);
         }
     });
+    flipcar();
     cannonDebugger.update();
     cameraInstance.update();
     renderer.render(scene, cameraInstance.instance);
