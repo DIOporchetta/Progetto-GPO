@@ -5,16 +5,13 @@ import CannonDebugger from 'cannon-es-debugger';
 import Camera from './Camera/camera.js';
 import AudioManager from './AudioManager/audioManager.js';
 
-
 let carModel, wheelModels = [], mapModel;
 const loader = new GLTFLoader();
 const scene = new THREE.Scene();
 
-
 const renderer = new THREE.WebGLRenderer({
     antialias: true
 });
-
 
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
@@ -45,11 +42,9 @@ audioManager.loadSound('clacson', 'vite-project/src/Sound/clacson.ogg', { volume
     .then(() => console.log('Audio caricato!'))
     .catch((error) => console.error('Errore nel caricamento audio:', error));
 
-// Carica il suono del gas
 audioManager.loadSound('gas', 'vite-project/src/Sound/gas.ogg', { volume: 1.0, loop: true })
     .then(() => console.log('Audio caricato!'))
     .catch((error) => console.error('Errore nel caricamento audio:', error));
-
 
 // Dimensioni principali
 const CHASSIS_WIDTH = 3.52;
@@ -57,9 +52,9 @@ const CHASSIS_LENGTH = 1.5;
 const CHASSIS_HEIGHT = 0.5;
 const AXIS_WIDTH = 3;
 
-const suspensionStiffness = 500;  // Più alto, meno rimbalzo
-const suspensionDamping = 5000;     // Smorza il rimbalzo
-const suspensionCompression = 0; // Assorbe l'urto iniziale
+const suspensionStiffness = 500;
+const suspensionDamping = 5000;
+const suspensionCompression = 0;
 
 loader.load('/vite-project/src/Model/carbody.glb', (gltf) => {
     carModel = gltf.scene;
@@ -72,8 +67,6 @@ loader.load('/vite-project/src/Model/carbody.glb', (gltf) => {
 loader.load('/vite-project/src/Model/wheel2.glb', (gltf) => {
     const wheel = gltf.scene;
     wheel.scale.set(1.6, 1.6, 1.6);
-
-    // Crea 4 istanze della ruota
     for (let i = 0; i < 4; i++) {
         const wheelClone = wheel.clone();
         wheelModels.push(wheelClone);
@@ -87,12 +80,10 @@ loader.load('/vite-project/src/Model/map.glb', (gltf) => {
     scene.add(mapModel);
 });
 
-
 const axesHelper = new THREE.AxesHelper(8);
 scene.add(axesHelper);
 
-
-// Setup illuminazione
+// Illuminazione
 const light = new THREE.DirectionalLight(0xffffff, 3);
 light.position.set(1, 1, 1).normalize();
 scene.add(light);
@@ -102,28 +93,21 @@ const light1 = new THREE.DirectionalLight(0xffffff, 1);
 light1.position.set(1, 1, 1).normalize();
 scene.add(light1);
 
-
-
-// Terreno con un Box sottile
+// Terreno
 const groundMaterial = new CANNON.Material('ground');
-
 const groundBody = new CANNON.Body({
-    mass: 0, // Statico
+    mass: 0,
     material: groundMaterial,
     shape: new CANNON.Box(new CANNON.Vec3(200, 0.1, 200)) 
 });
-
-// Posiziona il terreno 
 groundBody.position.y = -0.05;  
 world.addBody(groundBody);
 
 // Veicolo
-
 const carBody = new CANNON.Body({
-    mass: 2000, 
+    mass: 2000, // Ridotto da 2000 per migliorare l'accelerazione
     position: new CANNON.Vec3(0, 10, 0),
     shape: new CANNON.Box(new CANNON.Vec3(CHASSIS_WIDTH, CHASSIS_HEIGHT, CHASSIS_LENGTH)),
-
     suspensionStiffness: suspensionStiffness,
     suspensionDamping: suspensionDamping,
     suspensionCompression: suspensionCompression,
@@ -132,65 +116,61 @@ const carBody = new CANNON.Body({
     useCustomSlidingRotationalSpeed: true
 });
 
-
-
-
 const vehicle = new CANNON.RigidVehicle({
     chassisBody: carBody
 });
+
 const testBoxBody = new CANNON.Body({ mass: 1 });
 testBoxBody.addShape(new CANNON.Box(new CANNON.Vec3(1,1,1)));
 testBoxBody.position.set(0, 10, 0);
 world.addBody(testBoxBody);
 
-// Configurazione corretta delle ruote
+// Configurazione ruote
 const wheelSettings = {
     axis: new CANNON.Vec3(0, 0, 1),
-    mass: 100,
+    mass: 200,
     shape: new CANNON.Cylinder(0.5, 0.5, 0.5, 100),
     material: new CANNON.Material('wheel'),
     down: new CANNON.Vec3(0, -1, 0),
     angularDamping: 0.8,
     suspension: {
-        stiffness: suspensionStiffness,     // Stiffness corretta
-        restLength: 0.9,                    // Lunghezza a riposo
-        damping: suspensionDamping,         // Smorza il rimbalzo
-        compression: suspensionCompression, // Compressione
-        maxForce: 500                     // Forza massima
+        stiffness: suspensionStiffness,
+        restLength: 0.9,
+        damping: 20, // Ridotto per migliorare la reattività
+        compression: suspensionCompression,
+        maxForce: 10000 // Aumentato per più stabilità
     }
 };
-// Materiale contatto ruote-terreno
+
 world.addContactMaterial(new CANNON.ContactMaterial(
     wheelSettings.material,
     groundMaterial,
     {
-        friction: 0.5,
-        restitution: 0.001
+        friction: 30, // Ridotto per meno resistenza
+        restitution: 0.1
     }
 ));
 
-// Posizioni ruote [x, z]
+// Posizioni ruote
 const wheelPositions = [
     [-2, AXIS_WIDTH / 2],  // Anteriore sinistra
     [-2, -AXIS_WIDTH / 2], // Posteriore sinistra
-    [2, AXIS_WIDTH / 2],  // Anteriore destra
-    [2, -AXIS_WIDTH / 2]  // Posteriore destra
+    [2, AXIS_WIDTH / 2],   // Anteriore destra
+    [2, -AXIS_WIDTH / 2]   // Posteriore destra
 ];
 
-// Creazione ruote
 wheelPositions.forEach(([x, z]) => {
     const wheelBody = new CANNON.Body({
         mass: wheelSettings.mass,
         material: wheelSettings.material,
     });
-
-    const correctRotation = (new CANNON.Quaternion()).setFromAxisAngle(new CANNON.Vec3(1, 0, 0), Math.PI / 2);
+    const correctRotation = new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(1, 0, 0), Math.PI / 2);
     wheelBody.addShape(wheelSettings.shape, new CANNON.Vec3(0, 0, 0), correctRotation);
     wheelBody.angularDamping = wheelSettings.angularDamping;
 
     vehicle.addWheel({
         body: wheelBody,
-        position: new CANNON.Vec3(x, -0.5, z), // Usa l'offset Y
+        position: new CANNON.Vec3(x, -0.5, z),
         axis: wheelSettings.axis,
         direction: wheelSettings.down,
         suspensionStiffness: wheelSettings.suspension.stiffness,
@@ -205,34 +185,43 @@ vehicle.addToWorld(world);
 // Controlli
 document.addEventListener('keydown', (event) => {
     const maxSteerVal = Math.PI / 8;
-    const maxForce = 6000;
+    const maxForce = 8000; // Aumentato per migliorare l'accelerazione
 
     switch (event.key) {
         case 'c':
-            audioManager.playSound('clacson')
+            audioManager.playSound('clacson');
             break;
         case 'w':
         case 'ArrowUp':
             vehicle.setWheelForce(maxForce, 0);
             vehicle.setWheelForce(maxForce, 1);
             break;
-
         case 's':
         case 'ArrowDown':
             vehicle.setWheelForce(-maxForce / 2, 0);
             vehicle.setWheelForce(-maxForce / 2, 1);
             break;
-
         case 'a':
         case 'ArrowLeft':
             vehicle.setSteeringValue(maxSteerVal, 0);
             vehicle.setSteeringValue(maxSteerVal, 1);
             break;
-
         case 'd':
         case 'ArrowRight':
             vehicle.setSteeringValue(-maxSteerVal, 0);
             vehicle.setSteeringValue(-maxSteerVal, 1);
+            break;
+        case 'e': // Aggiunto tasto per interazione
+            if (activeInteractionZones.size > 0) {
+                activeInteractionZones.forEach(zoneId => {
+                    const zone = interactionZones.find(z => z.id === zoneId);
+                    if (zone) {
+                        zone.action();
+                    }
+                });
+            } else {
+                console.log('Nessuna zona di interazione attiva.');
+            }
             break;
     }
 });
@@ -240,7 +229,7 @@ document.addEventListener('keydown', (event) => {
 document.addEventListener('keyup', (event) => {
     switch (event.key) {
         case 'c':
-            audioManager.stopSound('clacson')
+            audioManager.stopSound('clacson');
             break;
         case 'w':
         case 'ArrowUp':
@@ -249,7 +238,6 @@ document.addEventListener('keyup', (event) => {
             vehicle.setWheelForce(0, 0);
             vehicle.setWheelForce(0, 1);
             break;
-
         case 'a':
         case 'ArrowLeft':
         case 'd':
@@ -257,18 +245,22 @@ document.addEventListener('keyup', (event) => {
             vehicle.setSteeringValue(0, 0);
             vehicle.setSteeringValue(0, 1);
             break;
+        case 'e':
+            // Nessuna azione al rilascio
+            break;
     }
 });
 
-const hitboxMaterial = new CANNON.Material( 'Material');
+// Hitbox
+const hitboxMaterial = new CANNON.Material('Material');
 const hitboxes = [];
-hitboxes.push(createHitbox('house', new CANNON.Vec3(-128, 0, -11), { x: 26, y: 50, z: 52 },hitboxMaterial, world, scene));
-hitboxes.push(createHitbox('tree', new CANNON.Vec3(-25, 0,-1), { x: 8, y: 30, z: 7 }, hitboxMaterial, world, scene));
+hitboxes.push(createHitbox('house', new CANNON.Vec3(-128, 0, -11), { x: 26, y: 50, z: 52 }, hitboxMaterial, world, scene));
+hitboxes.push(createHitbox('tree', new CANNON.Vec3(-25, 0, -1), { x: 8, y: 30, z: 7 }, hitboxMaterial, world, scene));
 hitboxes.push(createHitbox('tree', new CANNON.Vec3(23, 0, -65), { x: 3, y: 40, z: 3 }, hitboxMaterial, world, scene));
 hitboxes.push(createHitbox('tree', new CANNON.Vec3(-117, 0, -108), { x: 5, y: 20, z: 5 }, hitboxMaterial, world, scene));
 hitboxes.push(createHitbox('tree', new CANNON.Vec3(136, 0, -160), { x: 10, y: 40, z: 10 }, hitboxMaterial, world, scene));
 hitboxes.push(createHitbox('tree', new CANNON.Vec3(160, 0, -153), { x: 7, y: 20, z: 7 }, hitboxMaterial, world, scene));
-hitboxes.push(createHitbox('PORTFOLIO', new CANNON.Vec3(0, 0, -162), { x: 80, y:40, z: 15 }, hitboxMaterial, world, scene));
+hitboxes.push(createHitbox('PORTFOLIO', new CANNON.Vec3(0, 0, -162), { x: 80, y: 40, z: 15 }, hitboxMaterial, world, scene));
 hitboxes.push(createHitbox('tree', new CANNON.Vec3(-165, 0, -163), { x: 5, y: 40, z: 5 }, hitboxMaterial, world, scene));
 hitboxes.push(createHitbox('tree', new CANNON.Vec3(-142, 0, -185), { x: 5, y: 40, z: 5 }, hitboxMaterial, world, scene));
 hitboxes.push(createHitbox('POINTER', new CANNON.Vec3(20, 0, 32), { x: 5, y: 40, z: 7 }, hitboxMaterial, world, scene));
@@ -276,25 +268,18 @@ hitboxes.push(createHitbox('MULIN', new CANNON.Vec3(135, 0, 50), { x: 18, y: 60,
 hitboxes.push(createHitbox('tree', new CANNON.Vec3(147, 0, 92), { x: 3, y: 40, z: 3 }, hitboxMaterial, world, scene));
 hitboxes.push(createHitbox('tree', new CANNON.Vec3(145, 0, 77), { x: 3, y: 10, z: 3 }, hitboxMaterial, world, scene));
 hitboxes.push(createHitbox('tree', new CANNON.Vec3(156, 0, 86), { x: 12, y: 10, z: 3 }, hitboxMaterial, world, scene));
-hitboxes.push(createHitbox('house', new CANNON.Vec3(-179, 0, -53), { x: 24, y: 40, z: 69 },hitboxMaterial, world, scene));
+hitboxes.push(createHitbox('house', new CANNON.Vec3(-179, 0, -53), { x: 24, y: 40, z: 69 }, hitboxMaterial, world, scene));
 
-// Funzione per aggiungere una hitbox
 function createHitbox(name, position, dimensions, material, world, scene) {
-    // Crea la hitbox fisica
-
-
     const hitboxShape = new CANNON.Box(new CANNON.Vec3(dimensions.x / 2, dimensions.y / 2, dimensions.z / 2));
     const hitboxBody = new CANNON.Body({
-        mass: 0, // Statico, non si muove
-        material: hitboxMaterial,
+        mass: 0,
+        material: material,
         position: position
     });
     hitboxBody.addShape(hitboxShape);
-    
-    // Aggiungi la hitbox al mondo fisico
     world.addBody(hitboxBody);
 
-    // Crea il modello 3D della hitbox
     const hitboxMesh = new THREE.Mesh(
         new THREE.BoxGeometry(dimensions.x, dimensions.y, dimensions.z),
         new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true })
@@ -302,12 +287,99 @@ function createHitbox(name, position, dimensions, material, world, scene) {
     hitboxMesh.position.copy(hitboxBody.position);
     scene.add(hitboxMesh);
 
-    // Restituisci un oggetto che contiene il corpo fisico e il modello 3D
     return {
         body: hitboxBody,
         mesh: hitboxMesh
     };
 }
+
+// Zone di interazione
+const activeInteractionZones = new Set();
+const interactionZones = [
+    {
+        id: 'zone1',
+        name: 'Zona 1',
+        position: new CANNON.Vec3(10, 0, 10),
+        dimensions: { x: 5, y: 5, z: 5 },
+        action: () => {
+            console.log('Interazione nella Zona 1!');
+            audioManager.playSound('clacson');
+        }
+    },
+    {
+        id: 'zone2',
+        name: 'Zona 2',
+        position: new CANNON.Vec3(-10, 0, -10),
+        dimensions: { x: 5, y: 5, z: 5 },
+        action: () => {
+            console.log('Interazione nella Zona 2!');
+            alert('Hai attivato la zona di interazione!');
+        }
+    }
+];
+
+function createInteractionZone(id, name, position, dimensions, material, world, scene) {
+    const hitboxShape = new CANNON.Box(new CANNON.Vec3(dimensions.x / 2, dimensions.y / 2, dimensions.z / 2));
+    const hitboxBody = new CANNON.Body({
+        mass: 0,
+        material: material,
+        position: position,
+        isTrigger: true
+    });
+    hitboxBody.addShape(hitboxShape);
+    hitboxBody.zoneId = id;
+    hitboxBody.zoneName = name;
+    world.addBody(hitboxBody);
+
+    const hitboxMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(dimensions.x, dimensions.y, dimensions.z),
+        new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true }) // Verde per distinguerle
+    );
+    hitboxMesh.position.copy(hitboxBody.position);
+    scene.add(hitboxMesh);
+
+    return {
+        body: hitboxBody,
+        mesh: hitboxMesh
+    };
+}
+
+const interactionZoneBodies = [];
+interactionZones.forEach(zone => {
+    const zoneObj = createInteractionZone(
+        zone.id,
+        zone.name,
+        zone.position,
+        zone.dimensions,
+        hitboxMaterial,
+        world,
+        scene
+    );
+    interactionZoneBodies.push(zoneObj);
+});
+
+carBody.addEventListener('collide', (event) => {
+    const otherBody = event.body;
+    if (otherBody.zoneId) {
+        activeInteractionZones.add(otherBody.zoneId);
+        console.log(`Entrato nella zona: ${otherBody.zoneName}`);
+    }
+});
+
+world.addEventListener('postStep', () => {
+    interactionZones.forEach(zone => {
+        const zoneBody = interactionZoneBodies.find(z => z.body.zoneId === zone.id)?.body;
+        if (zoneBody) {
+            const isColliding = world.narrowphase.getContacts([carBody], [zoneBody])?.length > 0;
+            if (!isColliding && activeInteractionZones.has(zone.id)) {
+                activeInteractionZones.delete(zone.id);
+                console.log(`Uscito dalla zona: ${zone.name}`);
+            }
+        } else {
+            console.warn(`Zona non trovata: ${zone.id}`);
+        }
+    });
+});
 
 function flipcar() {
     const quaternion = carBody.quaternion;
@@ -317,36 +389,38 @@ function flipcar() {
     const dotProduct = worldUp.dot(globalUp);
     
     if (dotProduct < 0.2) {
-        // Salva la direzione "avanti" originale del veicolo
-        const forwardVector = new CANNON.Vec3(1, 0, 0); // Direzione "avanti" locale (asse X)
+        const forwardVector = new CANNON.Vec3(1, 0, 0);
         const worldForward = quaternion.vmult(forwardVector);
-        worldForward.y = 0; // Proietta sul piano XZ
+        worldForward.y = 0;
         worldForward.normalize();
         const yawAngle = Math.atan2(worldForward.z, worldForward.x);
 
-        // Resetta l'orientamento per riportarlo verticale
         carBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), 0);
-        
-        // Riapplica la rotazione Y originale
         const yawQuaternion = new CANNON.Quaternion();
-        yawQuaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), yawAngle + Math.PI / 2); // Aggiusta per il modello
+        yawQuaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), yawAngle + Math.PI / 2);
         carBody.quaternion.mult(yawQuaternion, carBody.quaternion);
         
-        // Solleva il veicolo per evitare incastri
-        carBody.position.y += 1.5; // Aumenta leggermente il sollevamento
+        // Solleva il veicolo e riallinea le ruote
+        carBody.position.y = 2; // Valore fisso per garantire che sia sopra il terreno
         
         // Resetta velocità e forze
         carBody.angularVelocity.set(0, 0, 0);
         carBody.velocity.set(0, 0, 0);
         
-        // Resetta le forze sulle ruote per sicurezza
+        // Riallinea le ruote e resetta le sospensioni
         vehicle.wheelBodies.forEach((wheel, index) => {
-            vehicle.setWheelForce(0, index); // Azzera tutte le forze sulle ruote
-            wheel.angularVelocity.set(0, 0, 0); // Resetta la rotazione delle ruote
-            wheel.velocity.set(0, 0, 0); // Resetta la velocità delle ruote
+            vehicle.setWheelForce(0, index);
+            wheel.angularVelocity.set(0, 0, 0);
+            wheel.velocity.set(0, 0, 0);
+            // Riallinea la posizione della ruota rispetto al chassis
+            const wheelPos = wheelPositions[index];
+            wheel.position.set(
+                carBody.position.x + wheelPos[0],
+                carBody.position.y - wheelSettings.suspension.restLength,
+                carBody.position.z + wheelPos[1]
+            );
         });
 
-        // Log per debug
         console.log("Ribaltamento corretto:");
         console.log("Posizione:", carBody.position);
         console.log("Quaternion:", carBody.quaternion);
@@ -354,36 +428,28 @@ function flipcar() {
     }
 }
 
-
-
 // Animazione
-
 function animate() {
     world.step(1 / 60);
 
     hitboxes.forEach(hitbox => {
         hitbox.mesh.position.copy(hitbox.body.position);
     });
-    // Aggiorna scocca
+
     if (carModel) {
-        carModel.position.copy(new CANNON.Vec3(carBody.position.x, carBody.position.y-1, carBody.position.z));
+        carModel.position.copy(new CANNON.Vec3(carBody.position.x, carBody.position.y - 1, carBody.position.z));
         carModel.quaternion.copy(carBody.quaternion);
     }
 
-    // Aggiorna ruote
     vehicle.wheelBodies.forEach((wheelBody, index) => {
         if (wheelModels[index]) {
             const wheelMesh = wheelModels[index];
-
-            // Copia posizione e rotazione dal corpo fisico
-            //wheelMesh.position.copy(new CANNON.Vec3(wheelBody.position.x, wheelBody.position.y-0.5, wheelBody.position.z));
             wheelMesh.position.copy(wheelBody.position);
             wheelMesh.quaternion.copy(wheelBody.quaternion);
-
-            // Rotazione aggiuntiva per allineare il modello (se necessario)
             wheelMesh.rotateX(Math.PI / 2);
         }
     });
+
     flipcar();
     cannonDebugger.update();
     cameraInstance.update();
