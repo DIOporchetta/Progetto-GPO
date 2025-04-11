@@ -246,7 +246,7 @@ document.addEventListener('keyup', (event) => {
             vehicle.setSteeringValue(0, 1);
             break;
         case 'e':
-            // Nessuna azione al rilascio
+            // Nessuna azione 
             break;
     }
 });
@@ -346,39 +346,45 @@ function createInteractionZone(id, name, position, dimensions, material, world, 
 
 const interactionZoneBodies = [];
 interactionZones.forEach(zone => {
-    const zoneObj = createInteractionZone(
-        zone.id,
-        zone.name,
-        zone.position,
-        zone.dimensions,
-        hitboxMaterial,
-        world,
-        scene
+    const zoneObj = createInteractionZone(zone.id,zone.name,zone.position,zone.dimensions,hitboxMaterial,world,scene
     );
     interactionZoneBodies.push(zoneObj);
 });
 
 carBody.addEventListener('collide', (event) => {
-    const otherBody = event.body;
-    if (otherBody.zoneId) {
-        activeInteractionZones.add(otherBody.zoneId);
-        console.log(`Entrato nella zona: ${otherBody.zoneName}`);
+    try {
+        const otherBody = event.body;
+        if (otherBody.zoneId) {
+            activeInteractionZones.add(otherBody.zoneId);
+            console.log(`Entrato nella zona: ${otherBody.zoneName}`);
+        }
+    } catch (error) {
+        console.error('Errore nel listener collide:', error);
     }
 });
 
 world.addEventListener('postStep', () => {
-    interactionZones.forEach(zone => {
-        const zoneBody = interactionZoneBodies.find(z => z.body.zoneId === zone.id)?.body;
-        if (zoneBody) {
-            const isColliding = world.narrowphase.getContacts([carBody], [zoneBody])?.length > 0;
+    try {
+        interactionZones.forEach(zone => {
+            const zoneBody = interactionZoneBodies.find(z => z.body.zoneId === zone.id)?.body;
+            if (!zoneBody) {
+                console.warn(`Zona non trovata: ${zone.id}`);
+                return;
+            }
+            const distance = carBody.position.distanceTo(zoneBody.position);
+            const maxDistance = Math.max(zone.dimensions.x, zone.dimensions.y, zone.dimensions.z) / 2;
+            const isColliding = distance < maxDistance;
             if (!isColliding && activeInteractionZones.has(zone.id)) {
                 activeInteractionZones.delete(zone.id);
                 console.log(`Uscito dalla zona: ${zone.name}`);
+            } else if (isColliding && !activeInteractionZones.has(zone.id)) {
+                activeInteractionZones.add(zone.id);
+                console.log(`Entrato nella zona: ${zone.name}`);
             }
-        } else {
-            console.warn(`Zona non trovata: ${zone.id}`);
-        }
-    });
+        });
+    } catch (error) {
+        console.error('Errore nel listener postStep:', error);
+    }
 });
 
 function flipcar() {
@@ -401,7 +407,7 @@ function flipcar() {
         carBody.quaternion.mult(yawQuaternion, carBody.quaternion);
         
         // Solleva il veicolo e riallinea le ruote
-        carBody.position.y = 2; // Valore fisso per garantire che sia sopra il terreno
+        carBody.position.y = 2; // Valore fisso per garantire che sia sopra 
         
         // Resetta velocità e forze
         carBody.angularVelocity.set(0, 0, 0);
@@ -412,7 +418,6 @@ function flipcar() {
             vehicle.setWheelForce(0, index);
             wheel.angularVelocity.set(0, 0, 0);
             wheel.velocity.set(0, 0, 0);
-            // Riallinea la posizione della ruota rispetto al chassis
             const wheelPos = wheelPositions[index];
             wheel.position.set(
                 carBody.position.x + wheelPos[0],
@@ -431,6 +436,15 @@ function flipcar() {
 // Animazione
 function animate() {
     world.step(1 / 60);
+    world.gravity.set(0, -9.82, 0);
+world.defaultContactMaterial = new CANNON.ContactMaterial(
+    new CANNON.Material('default'),
+    new CANNON.Material('default'),
+    {
+        friction: 0.1,
+        restitution: 0.7
+    }
+);
 
     hitboxes.forEach(hitbox => {
         hitbox.mesh.position.copy(hitbox.body.position);
