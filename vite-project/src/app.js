@@ -46,15 +46,15 @@ audioManager.loadSound('gas', 'vite-project/src/Sound/gas.ogg', { volume: 1.0, l
     .then(() => console.log('Audio caricato!'))
     .catch((error) => console.error('Errore nel caricamento audio:', error));
 
-// Dimensioni principali
+// Dimensioni principali - MODIFICATE per maggiore stabilità
 const CHASSIS_WIDTH = 3.52;
-const CHASSIS_LENGTH = 1.5;
-const CHASSIS_HEIGHT = 0.5;
-const AXIS_WIDTH = 3;
+const CHASSIS_LENGTH = 1.8; // Aumentato da 1.5 per più stabilità longitudinale
+const CHASSIS_HEIGHT = 0.3; // Ridotto da 0.5 per abbassare il centro di massa
+const AXIS_WIDTH = 3.2; // Leggermente aumentato per carreggiata più larga
 
-const suspensionStiffness = 500;
-const suspensionDamping = 5000;
-const suspensionCompression = 0;
+const suspensionStiffness = 800; // Aumentato da 500 per sospensioni più rigide
+const suspensionDamping = 8000; // Aumentato da 5000 per più smorzamento
+const suspensionCompression = 0.1; // Aggiunto per migliore compressione
 
 loader.load('/vite-project/src/Model/carbody.glb', (gltf) => {
     carModel = gltf.scene;
@@ -103,17 +103,20 @@ const groundBody = new CANNON.Body({
 groundBody.position.y = -0.05;  
 world.addBody(groundBody);
 
-// Veicolo
+// Veicolo - MODIFICATO per maggiore stabilità
 const carBody = new CANNON.Body({
-    mass: 2000, // Ridotto da 2000 per migliorare l'accelerazione
+    mass: 2500, // Aumentato da 2000 per più stabilità
     position: new CANNON.Vec3(0, 10, 0),
     shape: new CANNON.Box(new CANNON.Vec3(CHASSIS_WIDTH, CHASSIS_HEIGHT, CHASSIS_LENGTH)),
+    material: new CANNON.Material('chassis'), // Aggiunto materiale specifico
     suspensionStiffness: suspensionStiffness,
     suspensionDamping: suspensionDamping,
     suspensionCompression: suspensionCompression,
-    maxSuspensionTravel: 0.3,
-    customSlidingRotationalSpeed: -0.1,
-    useCustomSlidingRotationalSpeed: true
+    maxSuspensionTravel: 0.2, // Ridotto da 0.3 per meno oscillazioni
+    customSlidingRotationalSpeed: -0.05, // Ridotto da -0.1 per meno instabilità
+    useCustomSlidingRotationalSpeed: true,
+    angularDamping: 0.4, // Aggiunto smorzamento angolare per ridurre rotazioni
+    linearDamping: 0.01 // Minimo smorzamento lineare per mantenere velocità
 });
 
 const vehicle = new CANNON.RigidVehicle({
@@ -125,20 +128,20 @@ testBoxBody.addShape(new CANNON.Box(new CANNON.Vec3(1,1,1)));
 testBoxBody.position.set(0, 10, 0);
 world.addBody(testBoxBody);
 
-// Configurazione ruote
+// Configurazione ruote - MIGLIORATA
 const wheelSettings = {
     axis: new CANNON.Vec3(0, 0, 1),
-    mass: 200,
+    mass: 150, // Ridotto da 200 per meno inerzia delle ruote
     shape: new CANNON.Cylinder(0.5, 0.5, 0.5, 100),
     material: new CANNON.Material('wheel'),
     down: new CANNON.Vec3(0, -1, 0),
-    angularDamping: 0.8,
+    angularDamping: 0.6, // Ridotto da 0.8 per mantenere velocità
     suspension: {
         stiffness: suspensionStiffness,
-        restLength: 0.9,
-        damping: 20, // Ridotto per migliorare la reattività
+        restLength: 0.8, // Ridotto da 0.9 per abbassare la macchina
+        damping: 30, // Aumentato da 20 per più stabilità
         compression: suspensionCompression,
-        maxForce: 10000 // Aumentato per più stabilità
+        maxForce: 15000 // Aumentato da 10000 per più controllo
     }
 };
 
@@ -146,12 +149,22 @@ world.addContactMaterial(new CANNON.ContactMaterial(
     wheelSettings.material,
     groundMaterial,
     {
-        friction: 30, // Ridotto per meno resistenza
+        friction: 25, // Ridotto leggermente da 30 ma ancora alto per grip
+        restitution: 0.05 // Ridotto da 0.1 per meno rimbalzi
+    }
+));
+
+// Aggiunto contact material per il telaio
+world.addContactMaterial(new CANNON.ContactMaterial(
+    carBody.material,
+    groundMaterial,
+    {
+        friction: 0.3,
         restitution: 0.1
     }
 ));
 
-// Posizioni ruote
+// Posizioni ruote - MODIFICATE per carreggiata più larga
 const wheelPositions = [
     [-2, AXIS_WIDTH / 2],  // Anteriore sinistra
     [-2, -AXIS_WIDTH / 2], // Posteriore sinistra
@@ -170,7 +183,7 @@ wheelPositions.forEach(([x, z]) => {
 
     vehicle.addWheel({
         body: wheelBody,
-        position: new CANNON.Vec3(x, -0.5, z),
+        position: new CANNON.Vec3(x, -0.4, z), // Ridotto da -0.5 per abbassare
         axis: wheelSettings.axis,
         direction: wheelSettings.down,
         suspensionStiffness: wheelSettings.suspension.stiffness,
@@ -182,10 +195,10 @@ wheelPositions.forEach(([x, z]) => {
 
 vehicle.addToWorld(world);
 
-// Controlli
+// Controlli - INVARIATI per mantenere la stessa velocità
 document.addEventListener('keydown', (event) => {
     const maxSteerVal = Math.PI / 8;
-    const maxForce = 8000; // Aumentato per migliorare l'accelerazione
+    const maxForce = 8000; // Mantenuto uguale per stessa velocità
 
     switch (event.key) {
         case 'c':
@@ -387,6 +400,7 @@ world.addEventListener('postStep', () => {
     }
 });
 
+// Funzione flipcar MIGLIORATA - più conservativa
 function flipcar() {
     const quaternion = carBody.quaternion;
     const upVector = new CANNON.Vec3(0, 1, 0);
@@ -394,35 +408,31 @@ function flipcar() {
     const globalUp = new CANNON.Vec3(0, 1, 0);
     const dotProduct = worldUp.dot(globalUp);
 
-    if (dotProduct < 0.2) {
+    // Soglia più bassa per attivare il flip (era 0.2, ora 0.1)
+    if (dotProduct < 0.1) {
         // Salva la direzione attuale della macchina prima del ribaltamento
-        const currentForward = new CANNON.Vec3(1, 0, 0); // Direzione locale forward della macchina
+        const currentForward = new CANNON.Vec3(1, 0, 0);
         const worldForward = carBody.quaternion.vmult(currentForward);
-        worldForward.y = 0; // Rimuovi la componente Y
+        worldForward.y = 0;
         worldForward.normalize();
         
-        // Calcola l'angolo di yaw basato sulla direzione attuale
         const yawAngle = Math.atan2(worldForward.z, worldForward.x);
         
-        // Crea il quaternion per il raddrizzamento mantenendo l'orientamento
         const yawQuaternion = new CANNON.Quaternion();
         yawQuaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), yawAngle);
         
-        // Applica il nuovo orientamento
         carBody.quaternion.copy(yawQuaternion);
         
-        // Resetta posizione e velocità
-        carBody.position.y = 2;
+        // Posizione leggermente più alta per evitare clip nel terreno
+        carBody.position.y = 2.5;
         carBody.angularVelocity.set(0, 0, 0);
         carBody.velocity.set(0, 0, 0);
 
-        // Resetta le ruote
         vehicle.wheelBodies.forEach((wheel, index) => {
             vehicle.setWheelForce(0, index);
             wheel.angularVelocity.set(0, 0, 0);
             wheel.velocity.set(0, 0, 0);
             
-            // Posiziona le ruote relative al nuovo orientamento del corpo
             const wheelOffset = new CANNON.Vec3(wheelPositions[index][0], -wheelSettings.suspension.restLength, wheelPositions[index][1]);
             const worldWheelPos = carBody.quaternion.vmult(wheelOffset);
             wheel.position.copy(carBody.position.vadd(worldWheelPos));
@@ -437,14 +447,14 @@ function flipcar() {
 function animate() {
     world.step(1 / 60);
     world.gravity.set(0, -9.82, 0);
-world.defaultContactMaterial = new CANNON.ContactMaterial(
-    new CANNON.Material('default'),
-    new CANNON.Material('default'),
-    {
-        friction: 0.1,
-        restitution: 0.7
-    }
-);
+    world.defaultContactMaterial = new CANNON.ContactMaterial(
+        new CANNON.Material('default'),
+        new CANNON.Material('default'),
+        {
+            friction: 0.1,
+            restitution: 0.7
+        }
+    );
 
     hitboxes.forEach(hitbox => {
         hitbox.mesh.position.copy(hitbox.body.position);
