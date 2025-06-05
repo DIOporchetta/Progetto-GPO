@@ -393,43 +393,43 @@ function flipcar() {
     const worldUp = quaternion.vmult(upVector);
     const globalUp = new CANNON.Vec3(0, 1, 0);
     const dotProduct = worldUp.dot(globalUp);
-    
-    if (dotProduct < 0.2) {
-        const forwardVector = new CANNON.Vec3(1, 0, 0);
-        const worldForward = quaternion.vmult(forwardVector);
-        worldForward.y = 0;
-        worldForward.normalize();
-        const yawAngle = Math.atan2(worldForward.z, worldForward.x);
 
-        carBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), 0);
+    if (dotProduct < 0.2) {
+        // Salva la direzione attuale della macchina prima del ribaltamento
+        const currentForward = new CANNON.Vec3(1, 0, 0); // Direzione locale forward della macchina
+        const worldForward = carBody.quaternion.vmult(currentForward);
+        worldForward.y = 0; // Rimuovi la componente Y
+        worldForward.normalize();
+        
+        // Calcola l'angolo di yaw basato sulla direzione attuale
+        const yawAngle = Math.atan2(worldForward.z, worldForward.x);
+        
+        // Crea il quaternion per il raddrizzamento mantenendo l'orientamento
         const yawQuaternion = new CANNON.Quaternion();
-        yawQuaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), yawAngle + Math.PI / 2);
-        carBody.quaternion.mult(yawQuaternion, carBody.quaternion);
+        yawQuaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), yawAngle);
         
-        // Solleva il veicolo e riallinea le ruote
-        carBody.position.y = 2; // Valore fisso per garantire che sia sopra 
+        // Applica il nuovo orientamento
+        carBody.quaternion.copy(yawQuaternion);
         
-        // Resetta velocità e forze
+        // Resetta posizione e velocità
+        carBody.position.y = 2;
         carBody.angularVelocity.set(0, 0, 0);
         carBody.velocity.set(0, 0, 0);
-        
-        // Riallinea le ruote e resetta le sospensioni
+
+        // Resetta le ruote
         vehicle.wheelBodies.forEach((wheel, index) => {
             vehicle.setWheelForce(0, index);
             wheel.angularVelocity.set(0, 0, 0);
             wheel.velocity.set(0, 0, 0);
-            const wheelPos = wheelPositions[index];
-            wheel.position.set(
-                carBody.position.x + wheelPos[0],
-                carBody.position.y - wheelSettings.suspension.restLength,
-                carBody.position.z + wheelPos[1]
-            );
+            
+            // Posiziona le ruote relative al nuovo orientamento del corpo
+            const wheelOffset = new CANNON.Vec3(wheelPositions[index][0], -wheelSettings.suspension.restLength, wheelPositions[index][1]);
+            const worldWheelPos = carBody.quaternion.vmult(wheelOffset);
+            wheel.position.copy(carBody.position.vadd(worldWheelPos));
+            wheel.quaternion.copy(carBody.quaternion);
         });
 
-        console.log("Ribaltamento corretto:");
-        console.log("Posizione:", carBody.position);
-        console.log("Quaternion:", carBody.quaternion);
-        console.log("Velocità chassis:", carBody.velocity);
+        console.log("Ribaltamento corretto mantenendo l'orientamento originale");
     }
 }
 
