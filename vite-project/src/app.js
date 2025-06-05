@@ -293,6 +293,7 @@ function createHitbox(name, position, dimensions, material, world, scene) {
     };
 }
 
+const zoneMessage = document.getElementById('zone-message');
 // Zone di interazione
 const activeInteractionZones = new Set();
 const interactionZones = [
@@ -312,10 +313,9 @@ const interactionZones = [
         position: new CANNON.Vec3(-10, 0, -10),
         dimensions: { x: 5, y: 5, z: 5 },
         action: () => {
-            console.log('Interazione nella Zona 2!');
-            alert('Hai attivato la zona di interazione!');
+          console.log('Interazione nella Zona 2!');
         }
-    }
+      }
 ];
 
 function createInteractionZone(id, name, position, dimensions, material, world, scene) {
@@ -373,13 +373,25 @@ world.addEventListener('postStep', () => {
             }
             const distance = carBody.position.distanceTo(zoneBody.position);
             const maxDistance = Math.max(zone.dimensions.x, zone.dimensions.y, zone.dimensions.z) / 2;
-            const isColliding = distance < maxDistance;
+            const isColliding = distance <= maxDistance;
+
             if (!isColliding && activeInteractionZones.has(zone.id)) {
+                // Uscita zona
                 activeInteractionZones.delete(zone.id);
                 console.log(`Uscito dalla zona: ${zone.name}`);
+
+                // Nascondi messaggio solo se non ci sono altre zone attive
+                if (activeInteractionZones.size === 0) {
+                    zoneMessage.classList.add('hidden');
+                }
             } else if (isColliding && !activeInteractionZones.has(zone.id)) {
+                // Entrata zona
                 activeInteractionZones.add(zone.id);
                 console.log(`Entrato nella zona: ${zone.name}`);
+
+                // Mostra messaggio aggiornato con nome zona
+                zoneMessage.textContent = `Sei nella zona: ${zone.name}`;
+                zoneMessage.classList.remove('hidden');
             }
         });
     } catch (error) {
