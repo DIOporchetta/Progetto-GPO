@@ -1,7 +1,7 @@
-/* Stile di base per la pagina Project */
+/* Stile di base per la pagina */
 body {
     background: radial-gradient(circle at top, #000000, #272c38);
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -10,17 +10,125 @@ body {
     animation: bg-move 10s infinite alternate ease-in-out;
     color: white;
     font-family: Arial, sans-serif;
+    padding: 20px 0;
+}
+
+@keyframes bg-move {
+    from {
+        background-position: center top;
+        background-size: 100% 100%;
+    }
+    to {
+        background-position: center bottom;
+        background-size: 150% 150%;
+    }
 }
 
 h1 {
     font-size: 3rem;
     font-weight: bold;
     text-transform: uppercase;
-    background: linear-gradient(90deg, 
-        #ff0000, #ff7300, #ffeb00, 
-        #47ff00, #00ffee, #2b65ff, 
-        #8000ff, #ff0080, #ff0000);
-    background-size: 300% 300%;
+    background: linear-gradient(90deg, #ff4500, #ff8c00, #ffd700);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 40px;
+}
+
+/* --- Stile Schede Contatto con Bordo Grigio Chiaro (MODIFICATO) --- */
+.contact-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 30px;
+    justify-content: center;
+    padding: 20px;
+    max-width: 900px;
+}
+
+.contact-card {
+    /* Sfondo grigio più scuro */
+    background: #3a3a3a;
+    border-radius: 12px;
+    padding: 25px;
+    width: 260px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    z-index: 1;
+    /* Rimosso il bordo trasparente, non più necessario con questo metodo */
+    border: 3px solid transparent;
+    background-clip: padding-box;
+}
+
+/* Pseudoelemento per creare il bordo grigio statico */
+.contact-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    /* MODIFICA: Sostituito il gradiente arcobaleno con un grigio più chiaro */
+    background: #555555;
+    border-radius: 12px; /* Deve combaciare con il border-radius della card */
+    margin: -3px; /* Deve essere uguale al negativo della larghezza del bordo */
+    z-index: -1;
+}
+
+.contact-card:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.7);
+}
+
+.contact-card h3 {
+    margin-top: 0;
+    font-size: 1.4rem;
+    color: #ffffff;
+}
+
+.contact-card p {
+    margin: 8px 0;
+    color: #e0e0e0;
+    font-size: 0.9rem;
+}
+
+.contact-card p strong {
+    color: #ffffff;
+}
+
+/* --- Stile Bottone "BACK" --- */
+.back-link {
+    margin-top: 40px;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(145deg, #25eb46, #07791a);
+    color: white;
+    font-weight: 600;
+    font-size: 1.2rem;
+    text-decoration: none;
+    border: none;
+    border-radius: 10px;
+    box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease-in-out;
+    position: relative;
+    overflow: hidden;
+}
+
+.back-link::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: -20%;
+    width: 150%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.4) 10%, transparent 50%);
+    transform: translateY(-50%) rotate(25deg);
+    transition: all 0.4s ease-in-out;
+    opacity: 0;
+}
+
+.back-link:hover::before {
+    left: 100%;
+    opacity: 1;
+}
+
+.back-link:hover {
+    transform: scale(1.05);
+    box-shadow: 0px 5px 15px rgba(37, 235, 70, 0.4);
 }
